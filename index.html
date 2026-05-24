@@ -6,7 +6,6 @@
   <title>MEMORIA</title>
 
   <style>
-
     *{
       margin:0;
       padding:0;
@@ -43,25 +42,15 @@
       padding:10px 16px;
       border-radius:999px;
       cursor:pointer;
-      transition:0.2s;
-    }
-
-    button:hover{
-      opacity:0.8;
     }
 
     .stage{
       width:100vw;
       height:100vh;
       overflow:auto;
-      cursor:grab;
       display:flex;
       justify-content:center;
       align-items:center;
-    }
-
-    .stage:active{
-      cursor:grabbing;
     }
 
     .word{
@@ -99,9 +88,28 @@
       filter:sepia(0.9) grayscale(0.3);
       transition:0.2s;
       cursor:pointer;
+      display:block;
     }
 
-    .frame:hover{
+    .text-frame{
+      width:100%;
+      height:100%;
+      background:#111;
+      color:#f5f1ea;
+      font-size:5px;
+      line-height:1.1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      padding:2px;
+      cursor:pointer;
+      overflow:hidden;
+      border:none;
+    }
+
+    .frame:hover,
+    .text-frame:hover{
       transform:scale(1.8);
       filter:none;
       z-index:5;
@@ -116,29 +124,45 @@
       justify-content:center;
       align-items:center;
       z-index:200;
+      padding:24px;
     }
 
     .modal-content{
       background:white;
-      width:min(600px,90%);
+      width:min(420px,90%);
+      max-height:85vh;
+      overflow:auto;
       border-radius:24px;
-      padding:24px;
+      padding:22px;
       position:relative;
     }
 
     .modal img{
       width:100%;
+      max-height:260px;
+      object-fit:cover;
       border-radius:18px;
-      margin-bottom:20px;
+      margin-bottom:18px;
+    }
+
+    .modal h2{
+      font-size:26px;
+      margin-bottom:10px;
+    }
+
+    .modal p{
+      font-size:16px;
+      line-height:1.5;
     }
 
     .close{
       position:absolute;
-      top:16px;
-      right:16px;
-      width:36px;
-      height:36px;
+      top:12px;
+      right:12px;
+      width:34px;
+      height:34px;
       border-radius:50%;
+      padding:0;
     }
 
     .upload-panel{
@@ -173,88 +197,41 @@
       resize:none;
       min-height:100px;
     }
-
   </style>
-
 </head>
 
 <body>
 
 <div class="toolbar">
-
-  <button id="zoomIn">
-    +
-  </button>
-
-  <button id="zoomOut">
-    −
-  </button>
-
-  <button id="resetZoom">
-    Reset
-  </button>
-
+  <button id="zoomIn">+</button>
+  <button id="zoomOut">−</button>
+  <button id="resetZoom">Reset</button>
 </div>
 
 <div class="stage" id="stage">
-
   <div class="word" id="word"></div>
-
 </div>
 
 <div class="upload-panel">
-
   <form id="memoryForm">
-
-    <input
-      type="text"
-      id="name"
-      placeholder="Nombre o título"
-      required
-    />
-
-    <input
-      type="file"
-      id="image"
-      accept="image/*"
-    />
-
-    <textarea
-      id="message"
-      placeholder="Escribe un mensaje..."
-      required
-    ></textarea>
-
-    <button type="submit">
-      Construir memoria
-    </button>
-
+    <input type="text" id="name" placeholder="Nombre o título" required />
+    <input type="file" id="image" accept="image/*" />
+    <textarea id="message" placeholder="Escribe un mensaje..." required></textarea>
+    <button type="submit">Construir memoria</button>
   </form>
-
 </div>
 
 <div class="modal" id="modal">
-
   <div class="modal-content">
-
-    <button class="close" id="closeModal">
-      X
-    </button>
-
+    <button class="close" id="closeModal">X</button>
     <img id="modalImage"/>
-
     <h2 id="modalTitle"></h2>
-
     <p id="modalMessage"></p>
-
   </div>
-
 </div>
 
 <script>
-
 const maps = {
-
   M:[
     "10001",
     "11011",
@@ -264,7 +241,6 @@ const maps = {
     "10001",
     "10001"
   ],
-
   E:[
     "11111",
     "10000",
@@ -274,7 +250,6 @@ const maps = {
     "10000",
     "11111"
   ],
-
   O:[
     "01110",
     "10001",
@@ -284,7 +259,6 @@ const maps = {
     "10001",
     "01110"
   ],
-
   R:[
     "11110",
     "10001",
@@ -294,7 +268,6 @@ const maps = {
     "10010",
     "10001"
   ],
-
   I:[
     "11111",
     "00100",
@@ -304,7 +277,6 @@ const maps = {
     "00100",
     "11111"
   ],
-
   A:[
     "01110",
     "10001",
@@ -314,212 +286,154 @@ const maps = {
     "10001",
     "10001"
   ]
-
 };
 
-let memories = [
-
+let memories = JSON.parse(localStorage.getItem("memories")) || [
   {
     name:"Memoria colectiva",
     message:"Cada rostro construye la palabra.",
     image:"https://picsum.photos/200?1"
   },
-
   {
     name:"Presencia",
     message:"Recordar también es resistir.",
     image:"https://picsum.photos/200?2"
   },
-
   {
     name:"Fragmento",
     message:"Una memoria compartida.",
-    image:"https://picsum.photos/200?3"
+    image:""
   }
-
 ];
 
 const word = document.getElementById("word");
 
 function renderWord(){
-
   word.innerHTML = "";
-
   const text = "MEMORIA";
-
   let count = 0;
 
   text.split("").forEach(letter=>{
-
-    const letterDiv =
-      document.createElement("div");
-
+    const letterDiv = document.createElement("div");
     letterDiv.className = "letter";
 
     maps[letter].forEach(row=>{
-
       row.split("").forEach(cell=>{
-
-        const div =
-          document.createElement("div");
+        const div = document.createElement("div");
 
         if(cell === "1"){
-
           div.className = "cell";
 
-          const memory =
-            memories[count % memories.length];
+          const memory = memories[count % memories.length];
 
-          const img =
-            document.createElement("img");
+          let frame;
 
-          img.src = memory.image;
+          if(memory.image){
+            frame = document.createElement("img");
+            frame.src = memory.image;
+            frame.className = "frame";
+          }else{
+            frame = document.createElement("button");
+            frame.className = "text-frame";
+            frame.textContent = memory.message.slice(0,45);
+          }
 
-          img.className = "frame";
+          frame.addEventListener("click",()=>{
+            document.getElementById("modal").style.display = "flex";
+            document.getElementById("modalTitle").textContent = memory.name;
+            document.getElementById("modalMessage").textContent = memory.message;
 
-          img.addEventListener("click",()=>{
+            const modalImage = document.getElementById("modalImage");
 
-            document
-              .getElementById("modal")
-              .style.display = "flex";
-
-            document
-              .getElementById("modalImage")
-              .src = memory.image;
-
-            document
-              .getElementById("modalTitle")
-              .textContent = memory.name;
-
-            document
-              .getElementById("modalMessage")
-              .textContent = memory.message;
-
+            if(memory.image){
+              modalImage.style.display = "block";
+              modalImage.src = memory.image;
+            }else{
+              modalImage.style.display = "none";
+            }
           });
 
-          div.appendChild(img);
-
+          div.appendChild(frame);
           count++;
-
         }else{
-
           div.className = "cell empty";
-
         }
 
         letterDiv.appendChild(div);
-
       });
-
     });
 
     word.appendChild(letterDiv);
-
   });
-
 }
 
 renderWord();
 
-document
-.getElementById("closeModal")
-.addEventListener("click",()=>{
+document.getElementById("closeModal").addEventListener("click",()=>{
+  document.getElementById("modal").style.display = "none";
+});
 
-  document
-    .getElementById("modal")
-    .style.display = "none";
-
+document.getElementById("modal").addEventListener("click",(e)=>{
+  if(e.target.id === "modal"){
+    document.getElementById("modal").style.display = "none";
+  }
 });
 
 let zoom = 1;
 
-document
-.getElementById("zoomIn")
-.addEventListener("click",()=>{
-
+document.getElementById("zoomIn").addEventListener("click",()=>{
   zoom += 0.1;
-
-  word.style.transform =
-    `scale(${zoom})`;
-
+  word.style.transform = `scale(${zoom})`;
 });
 
-document
-.getElementById("zoomOut")
-.addEventListener("click",()=>{
-
-  zoom -= 0.1;
-
-  word.style.transform =
-    `scale(${zoom})`;
-
+document.getElementById("zoomOut").addEventListener("click",()=>{
+  zoom = Math.max(0.5, zoom - 0.1);
+  word.style.transform = `scale(${zoom})`;
 });
 
-document
-.getElementById("resetZoom")
-.addEventListener("click",()=>{
-
+document.getElementById("resetZoom").addEventListener("click",()=>{
   zoom = 1;
-
-  word.style.transform =
-    `scale(${zoom})`;
-
+  word.style.transform = `scale(${zoom})`;
 });
 
-document
-.getElementById("memoryForm")
-.addEventListener("submit", async(e)=>{
-
+document.getElementById("memoryForm").addEventListener("submit", async(e)=>{
   e.preventDefault();
 
-  const name =
-    document.getElementById("name").value;
+  const name = document.getElementById("name").value;
+  const message = document.getElementById("message").value;
+  const file = document.getElementById("image").files[0];
 
-  const message =
-    document.getElementById("message").value;
-
-  const file =
-    document.getElementById("image").files[0];
-
-  let image =
-    "https://picsum.photos/200?random=" +
-    Math.random();
+  let image = "";
 
   if(file){
-
     image = await toBase64(file);
-
   }
 
   memories.unshift({
-
     name,
     message,
     image
-
   });
+
+  localStorage.setItem("memories", JSON.stringify(memories));
 
   renderWord();
 
   e.target.reset();
 
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
 });
 
 function toBase64(file){
-
   return new Promise((resolve)=>{
-
     const reader = new FileReader();
-
     reader.readAsDataURL(file);
-
-    reader.onload =
-      ()=> resolve(reader.result);
-
+    reader.onload = ()=> resolve(reader.result);
   });
-
 }
-
 </script>
 
 </body>
