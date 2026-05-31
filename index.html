@@ -2,439 +2,155 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>MEMORIA</title>
-
-  <style>
-    *{
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-    }
-
-    body{
-      background:#f5f1ea;
-      overflow-x:hidden;
-      overflow-y:auto;
-      font-family:Georgia, serif;
-      min-height:200vh;
-    }
-
-    .toolbar{
-      position:fixed;
-      top:20px;
-      left:50%;
-      transform:translateX(-50%);
-      z-index:100;
-      display:flex;
-      gap:10px;
-      background:rgba(255,255,255,0.8);
-      padding:12px 16px;
-      border-radius:999px;
-      backdrop-filter:blur(10px);
-      border:1px solid rgba(0,0,0,0.15);
-    }
-
-    button{
-      border:none;
-      background:#111;
-      color:white;
-      padding:10px 16px;
-      border-radius:999px;
-      cursor:pointer;
-    }
-
-    .stage{
-      width:100vw;
-      height:100vh;
-      overflow:auto;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-    }
-
-    .word{
-      display:flex;
-      gap:16px;
-      padding:100px;
-      transform-origin:center;
-      transition:transform 0.2s ease;
-    }
-
-    .letter{
-      display:grid;
-      grid-template-columns:repeat(5, 28px);
-      grid-template-rows:repeat(7, 28px);
-      gap:4px;
-      background:#111;
-      padding:6px;
-    }
-
-    .cell{
-      width:28px;
-      height:28px;
-      overflow:hidden;
-      background:#111;
-    }
-
-    .empty{
-      background:transparent;
-    }
-
-    .frame{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      filter:sepia(0.9) grayscale(0.3);
-      transition:0.2s;
-      cursor:pointer;
-      display:block;
-    }
-
-    .text-frame{
-      width:100%;
-      height:100%;
-      background:#111;
-      color:#f5f1ea;
-      font-size:5px;
-      line-height:1.1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      text-align:center;
-      padding:2px;
-      cursor:pointer;
-      overflow:hidden;
-      border:none;
-    }
-
-    .frame:hover,
-    .text-frame:hover{
-      transform:scale(1.8);
-      filter:none;
-      z-index:5;
-      position:relative;
-    }
-
-    .modal{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.7);
-      display:none;
-      justify-content:center;
-      align-items:center;
-      z-index:200;
-      padding:24px;
-    }
-
-    .modal-content{
-      background:white;
-      width:min(420px,90%);
-      max-height:85vh;
-      overflow:auto;
-      border-radius:24px;
-      padding:22px;
-      position:relative;
-    }
-
-    .modal img{
-      width:100%;
-      max-height:260px;
-      object-fit:cover;
-      border-radius:18px;
-      margin-bottom:18px;
-    }
-
-    .modal h2{
-      font-size:26px;
-      margin-bottom:10px;
-    }
-
-    .modal p{
-      font-size:16px;
-      line-height:1.5;
-    }
-
-    .close{
-      position:absolute;
-      top:12px;
-      right:12px;
-      width:34px;
-      height:34px;
-      border-radius:50%;
-      padding:0;
-    }
-
-    .upload-panel{
-      position:absolute;
-      top:calc(100vh + 40px);
-      left:50%;
-      transform:translateX(-50%);
-      z-index:100;
-      width:min(700px,90%);
-      background:rgba(255,255,255,0.88);
-      backdrop-filter:blur(10px);
-      border-radius:24px;
-      padding:20px;
-      border:1px solid rgba(0,0,0,0.1);
-    }
-
-    .upload-panel form{
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-    }
-
-    input,
-    textarea{
-      padding:12px;
-      border-radius:14px;
-      border:1px solid rgba(0,0,0,0.2);
-      font-family:inherit;
-    }
-
-    textarea{
-      resize:none;
-      min-height:100px;
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proyecto MEMORIA</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+  <section id="lobby" class="lobby">
+    <canvas id="lobbyCanvas"></canvas>
 
-<div class="toolbar">
-  <button id="zoomIn">+</button>
-  <button id="zoomOut">−</button>
-  <button id="resetZoom">Reset</button>
-</div>
+    <div class="brand">Proyecto<br>MEMORIA</div>
 
-<div class="stage" id="stage">
-  <div class="word" id="word"></div>
-</div>
+    <nav class="lobby-links">
+      <a href="#uploadSection">¿Cómo subir una memoria?</a>
+      <a href="#aboutSection">¿Qué es Proyecto MEMORIA?</a>
+    </nav>
 
-<div class="upload-panel">
-  <form id="memoryForm">
-    <input type="text" id="name" placeholder="Nombre o título" required />
-    <input type="file" id="image" accept="image/*" />
-    <textarea id="message" placeholder="Escribe un mensaje..." required></textarea>
-    <button type="submit">Construir memoria</button>
-  </form>
-</div>
+    <div class="lobby-content">
+      <h1>MEMORIA</h1>
+      <p>Un memorial digital colectivo</p>
 
-<div class="modal" id="modal">
-  <div class="modal-content">
-    <button class="close" id="closeModal">X</button>
-    <img id="modalImage"/>
-    <h2 id="modalTitle"></h2>
-    <p id="modalMessage"></p>
-  </div>
-</div>
+      <div class="lobby-actions">
+        <button id="enterMemorial">Entrar al memorial</button>
+        <a href="#uploadSection">Aportar una memoria</a>
+      </div>
+    </div>
+  </section>
 
-<script>
-const maps = {
-  M:[
-    "10001",
-    "11011",
-    "10101",
-    "10101",
-    "10001",
-    "10001",
-    "10001"
-  ],
-  E:[
-    "11111",
-    "10000",
-    "10000",
-    "11110",
-    "10000",
-    "10000",
-    "11111"
-  ],
-  O:[
-    "01110",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "01110"
-  ],
-  R:[
-    "11110",
-    "10001",
-    "10001",
-    "11110",
-    "10100",
-    "10010",
-    "10001"
-  ],
-  I:[
-    "11111",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "11111"
-  ],
-  A:[
-    "01110",
-    "10001",
-    "10001",
-    "11111",
-    "10001",
-    "10001",
-    "10001"
-  ]
-};
+  <main>
+    <section id="memorialPage" class="memorial-page">
+      <aside class="side-nav">
+        <div class="side-brand">Proyecto<br>MEMORIA</div>
 
-let memories = JSON.parse(localStorage.getItem("memories")) || [
-  {
-    name:"Memoria colectiva",
-    message:"Cada rostro construye la palabra.",
-    image:"https://picsum.photos/200?1"
-  },
-  {
-    name:"Presencia",
-    message:"Recordar también es resistir.",
-    image:"https://picsum.photos/200?2"
-  },
-  {
-    name:"Fragmento",
-    message:"Una memoria compartida.",
-    image:""
-  }
-];
+        <button id="goHome">Inicio</button>
+        <button id="viewFullWord">Ver palabra completa</button>
+        <a href="#uploadSection">Subir memoria</a>
+        <a href="#aboutSection">Sobre el proyecto</a>
+      </aside>
 
-const word = document.getElementById("word");
+      <section class="memorial-view">
+        <header class="viewer-toolbar">
+          <div>
+            <button id="zoomOut">−</button>
+            <button id="zoomIn">+</button>
+            <button id="resetView">Reset</button>
+          </div>
 
-function renderWord(){
-  word.innerHTML = "";
-  const text = "MEMORIA";
-  let count = 0;
+          <div class="viewer-hint">
+            Arrastra para girar · Rueda para acercar · Click en una letra
+          </div>
+        </header>
 
-  text.split("").forEach(letter=>{
-    const letterDiv = document.createElement("div");
-    letterDiv.className = "letter";
+        <div id="threeContainer" class="three-container"></div>
 
-    maps[letter].forEach(row=>{
-      row.split("").forEach(cell=>{
-        const div = document.createElement("div");
+        <section class="letter-panel">
+          <p class="eyebrow">Exploración 3D</p>
+          <h2 id="selectedLetterTitle">MEMORIA</h2>
+          <p id="selectedLetterText">
+            Selecciona una letra para verla por separado, girarla y explorar sus frames.
+          </p>
 
-        if(cell === "1"){
-          div.className = "cell";
+          <div class="letter-buttons" id="letterButtons"></div>
 
-          const memory = memories[count % memories.length];
+          <button id="isolateLetter">Ver letra seleccionada</button>
+          <button id="returnWord">Volver a palabra completa</button>
+        </section>
+      </section>
+    </section>
 
-          let frame;
+    <section id="uploadSection" class="content-section">
+      <div>
+        <p class="eyebrow">Participación</p>
+        <h2>¿Cómo subir una memoria?</h2>
+        <p>
+          Selecciona una persona detenida desaparecida desde la base del proyecto y sube
+          fotografías, videos, audios, documentos o escritos para complementar su memoria.
+        </p>
+      </div>
 
-          if(memory.image){
-            frame = document.createElement("img");
-            frame.src = memory.image;
-            frame.className = "frame";
-          }else{
-            frame = document.createElement("button");
-            frame.className = "text-frame";
-            frame.textContent = memory.message.slice(0,45);
-          }
+      <form id="memoryForm" class="memory-form">
+        <label>
+          Persona detenida desaparecida
+          <select id="personSelect" required></select>
+        </label>
 
-          frame.addEventListener("click",()=>{
-            document.getElementById("modal").style.display = "flex";
-            document.getElementById("modalTitle").textContent = memory.name;
-            document.getElementById("modalMessage").textContent = memory.message;
+        <label>
+          Tipo de aporte
+          <select id="contributionType" required>
+            <option value="Imagen">Imagen</option>
+            <option value="Video">Video</option>
+            <option value="Audio">Audio</option>
+            <option value="Escrito">Escrito</option>
+            <option value="Documento">Documento</option>
+            <option value="Otro archivo">Otro archivo</option>
+          </select>
+        </label>
 
-            const modalImage = document.getElementById("modalImage");
+        <label>
+          Archivos
+          <input id="filesInput" type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt" />
+        </label>
 
-            if(memory.image){
-              modalImage.style.display = "block";
-              modalImage.src = memory.image;
-            }else{
-              modalImage.style.display = "none";
-            }
-          });
+        <label>
+          Mensaje o testimonio
+          <textarea id="messageInput" placeholder="Escribe un recuerdo, contexto o testimonio..." required></textarea>
+        </label>
 
-          div.appendChild(frame);
-          count++;
-        }else{
-          div.className = "cell empty";
-        }
+        <label>
+          Relación con la persona
+          <select id="relationInput" required>
+            <option value="Familiar">Familiar</option>
+            <option value="Amistad">Amistad</option>
+            <option value="Investigador/a">Investigador/a</option>
+            <option value="Ciudadano/a">Ciudadano/a</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </label>
 
-        letterDiv.appendChild(div);
-      });
-    });
+        <label class="checkbox-label">
+          <input id="consentInput" type="checkbox" required />
+          Confirmo que este aporte puede ser revisado antes de publicarse.
+        </label>
 
-    word.appendChild(letterDiv);
-  });
-}
+        <button type="submit">Construir memoria</button>
+      </form>
+    </section>
 
-renderWord();
+    <section id="aboutSection" class="content-section about-section">
+      <p class="eyebrow">Proyecto MEMORIA</p>
+      <h2>Un memorial digital vivo</h2>
+      <p>
+        Proyecto MEMORIA busca complementar el archivo de personas detenidas desaparecidas
+        durante la dictadura en Chile mediante aportes ciudadanos, familiares y documentales.
+        La información oficial no se reemplaza: se amplía con memorias, imágenes, archivos
+        y testimonios vinculados a cada persona.
+      </p>
+    </section>
+  </main>
 
-document.getElementById("closeModal").addEventListener("click",()=>{
-  document.getElementById("modal").style.display = "none";
-});
+  <section id="memoryModal" class="modal">
+    <div class="modal-content">
+      <button id="closeModal" class="close">×</button>
+      <div id="modalMedia"></div>
+      <h2 id="modalTitle"></h2>
+      <p id="modalMeta"></p>
+      <p id="modalMessage"></p>
+      <ul id="modalFiles"></ul>
+    </div>
+  </section>
 
-document.getElementById("modal").addEventListener("click",(e)=>{
-  if(e.target.id === "modal"){
-    document.getElementById("modal").style.display = "none";
-  }
-});
-
-let zoom = 1;
-
-document.getElementById("zoomIn").addEventListener("click",()=>{
-  zoom += 0.1;
-  word.style.transform = `scale(${zoom})`;
-});
-
-document.getElementById("zoomOut").addEventListener("click",()=>{
-  zoom = Math.max(0.5, zoom - 0.1);
-  word.style.transform = `scale(${zoom})`;
-});
-
-document.getElementById("resetZoom").addEventListener("click",()=>{
-  zoom = 1;
-  word.style.transform = `scale(${zoom})`;
-});
-
-document.getElementById("memoryForm").addEventListener("submit", async(e)=>{
-  e.preventDefault();
-
-  const name = document.getElementById("name").value;
-  const message = document.getElementById("message").value;
-  const file = document.getElementById("image").files[0];
-
-  let image = "";
-
-  if(file){
-    image = await toBase64(file);
-  }
-
-  memories.unshift({
-    name,
-    message,
-    image
-  });
-
-  localStorage.setItem("memories", JSON.stringify(memories));
-
-  renderWord();
-
-  e.target.reset();
-
-  window.scrollTo({
-    top:0,
-    behavior:"smooth"
-  });
-});
-
-function toBase64(file){
-  return new Promise((resolve)=>{
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = ()=> resolve(reader.result);
-  });
-}
-</script>
-
+  <script type="module" src="script.js"></script>
 </body>
 </html>
