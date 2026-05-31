@@ -1,6 +1,30 @@
-import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
-import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+
+/* VIEWS */
+
+const views = document.querySelectorAll(".view");
+
+function showView(id){
+  views.forEach(view => view.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  if(id === "memorialView"){
+    setTimeout(() => {
+      resizeRenderer();
+      controls.update();
+    }, 80);
+  }
+}
+
+document.querySelectorAll("[data-view]").forEach(button => {
+  button.addEventListener("click", () => {
+    showView(button.dataset.view);
+  });
+});
+
+/* LOBBY BACKGROUND */
 
 const lobbyCanvas = document.getElementById("lobbyCanvas");
 const lobbyCtx = lobbyCanvas.getContext("2d");
@@ -18,8 +42,10 @@ function createLobbyTiles(){
   const cols = 4;
   const rows = 3;
   const gap = 10;
+
   const tileW = (lobbyCanvas.width * 0.72 - gap * (cols - 1)) / cols;
   const tileH = (lobbyCanvas.height * 0.58 - gap * (rows - 1)) / rows;
+
   const startX = lobbyCanvas.width / 2 - (cols * tileW + gap * (cols - 1)) / 2;
   const startY = lobbyCanvas.height / 2 - (rows * tileH + gap * (rows - 1)) / 2;
 
@@ -96,7 +122,7 @@ function animateLobby(time){
   lobbyCtx.fillStyle = "#f5f1ea";
   lobbyCtx.fillRect(0,0,lobbyCanvas.width,lobbyCanvas.height);
 
-  lobbyTiles.forEach(tile=>{
+  lobbyTiles.forEach(tile => {
     lobbyCtx.strokeStyle = "rgba(180,170,155,0.38)";
     lobbyCtx.lineWidth = 1.1;
     drawRoundRect(lobbyCtx,tile);
@@ -109,6 +135,8 @@ function animateLobby(time){
 window.addEventListener("resize", resizeLobbyCanvas);
 resizeLobbyCanvas();
 requestAnimationFrame(animateLobby);
+
+/* DATA */
 
 const museumPeople = [
   { id:"p001", name:"Memoria colectiva", region:"Chile" },
@@ -144,7 +172,10 @@ let memories = JSON.parse(localStorage.getItem("memories")) || [
   }
 ];
 
+/* THREE SCENE */
+
 const container = document.getElementById("threeContainer");
+
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
@@ -165,6 +196,7 @@ renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
+
 container.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -172,7 +204,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.set(0, 1.8, 0);
 controls.minDistance = 5;
-controls.maxDistance = 32;
+controls.maxDistance = 34;
 
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
@@ -207,17 +239,17 @@ floor.position.y = -0.05;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const backWall = new THREE.Mesh(
+const wall = new THREE.Mesh(
   new THREE.PlaneGeometry(60,22),
   new THREE.MeshStandardMaterial({
     color:0x3a332b,
-    roughness:0.8
+    roughness:0.82
   })
 );
 
-backWall.position.set(0,7,-7);
-backWall.receiveShadow = true;
-scene.add(backWall);
+wall.position.set(0,7,-7);
+wall.receiveShadow = true;
+scene.add(wall);
 
 const loader = new GLTFLoader();
 
@@ -239,32 +271,33 @@ function makePhotoTexture(memory){
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 640;
+
   const ctx = canvas.getContext("2d");
 
   ctx.fillStyle = "#e8d7bf";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  ctx.fillStyle = "#17111f";
-  ctx.font = "bold 34px Georgia";
-  ctx.textAlign = "center";
-  ctx.fillText(memory.name, 256, 110);
-
-  ctx.font = "24px Georgia";
-  ctx.fillText(memory.type || "Memoria", 256, 155);
+  ctx.fillRect(0,0,512,640);
 
   ctx.strokeStyle = "#7b5f3b";
-  ctx.lineWidth = 10;
+  ctx.lineWidth = 12;
   ctx.strokeRect(28,28,456,584);
 
-  ctx.fillStyle = "#111";
-  ctx.font = "20px Georgia";
+  ctx.fillStyle = "#17111f";
+  ctx.textAlign = "center";
 
+  ctx.font = "bold 34px Georgia";
+  ctx.fillText(memory.name,256,110);
+
+  ctx.font = "24px Georgia";
+  ctx.fillText(memory.type || "Memoria",256,155);
+
+  ctx.font = "20px Georgia";
   const words = memory.message.split(" ");
   let line = "";
   let y = 240;
 
-  words.forEach(word=>{
+  words.forEach(word => {
     const test = line + word + " ";
+
     if(ctx.measureText(test).width > 410){
       ctx.fillText(line,256,y);
       line = word + " ";
@@ -278,40 +311,36 @@ function makePhotoTexture(memory){
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+
   return texture;
 }
 
-function addFramesToLetter(letterObj, letterData){
-  const box = new THREE.Box3().setFromObject(letterObj);
+function addFramesToLetter(letterObject){
+  const box = new THREE.Box3().setFromObject(letterObject);
   const size = new THREE.Vector3();
-  const center = new THREE.Vector3();
   box.getSize(size);
-  box.getCenter(center);
 
   const frameGroup = new THREE.Group();
   frameGroup.name = "frames";
-  letterObj.add(frameGroup);
+  letterObject.add(frameGroup);
 
-  const frameW = size.x * 0.18;
-  const frameH = size.y * 0.22;
-  const depth = size.z * 0.52 + 0.04;
+  const frameW = Math.max(size.x * 0.18, 0.26);
+  const frameH = Math.max(size.y * 0.22, 0.34);
+  const depth = size.z * 0.52 + 0.05;
 
   const surfaces = [
-    { name:"front", z:depth, rotY:0 },
-    { name:"back", z:-depth, rotY:Math.PI },
-    { name:"left", x:-size.x * 0.52 - 0.04, rotY:-Math.PI/2 },
-    { name:"right", x:size.x * 0.52 + 0.04, rotY:Math.PI/2 },
-    { name:"top", y:size.y * 0.52 + 0.04, rotX:-Math.PI/2 }
+    { name:"front", z:depth, rotY:0, cols:2, rows:3 },
+    { name:"back", z:-depth, rotY:Math.PI, cols:2, rows:3 },
+    { name:"left", x:-size.x * 0.52 - 0.05, rotY:-Math.PI/2, cols:2, rows:3 },
+    { name:"right", x:size.x * 0.52 + 0.05, rotY:Math.PI/2, cols:2, rows:3 },
+    { name:"top", y:size.y * 0.52 + 0.05, rotX:-Math.PI/2, cols:3, rows:1 }
   ];
 
   let memoryIndex = 0;
 
-  surfaces.forEach(surface=>{
-    const cols = surface.name === "top" ? 3 : 2;
-    const rows = surface.name === "top" ? 1 : 3;
-
-    for(let row=0; row<rows; row++){
-      for(let col=0; col<cols; col++){
+  surfaces.forEach(surface => {
+    for(let row = 0; row < surface.rows; row++){
+      for(let col = 0; col < surface.cols; col++){
         const memory = memories[memoryIndex % memories.length];
         const texture = makePhotoTexture(memory);
 
@@ -327,11 +356,11 @@ function addFramesToLetter(letterObj, letterData){
           material
         );
 
-        plane.userData.memory = memory;
         plane.userData.isFrame = true;
+        plane.userData.memory = memory;
 
-        const px = (col - (cols-1)/2) * frameW * 1.25;
-        const py = (row - (rows-1)/2) * frameH * 1.25;
+        const px = (col - (surface.cols - 1) / 2) * frameW * 1.25;
+        const py = (row - (surface.rows - 1) / 2) * frameH * 1.25;
 
         if(surface.name === "front" || surface.name === "back"){
           plane.position.set(px, py, surface.z);
@@ -355,17 +384,45 @@ function addFramesToLetter(letterObj, letterData){
   });
 }
 
+function createFallbackLetter(data){
+  const group = new THREE.Group();
+  group.name = data.key;
+  group.position.set(data.x,0,0);
+
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1.8,4.2,1.2),
+    new THREE.MeshStandardMaterial({
+      color:0x5a4632,
+      roughness:0.55,
+      metalness:0.18
+    })
+  );
+
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+
+  addFramesToLetter(group);
+
+  memorialGroup.add(group);
+  loadedLetters.push({
+    key:data.key,
+    label:data.label,
+    object:group
+  });
+}
+
 function loadLetters(){
-  letterFiles.forEach(data=>{
+  letterFiles.forEach(data => {
     loader.load(
-      data.file,
-      gltf=>{
+      encodeURI(data.file),
+      gltf => {
         const model = gltf.scene;
         model.name = data.key;
         model.position.set(data.x,0,0);
         model.scale.setScalar(1.4);
 
-        model.traverse(child=>{
+        model.traverse(child => {
           if(child.isMesh){
             child.castShadow = true;
             child.receiveShadow = true;
@@ -377,7 +434,7 @@ function loadLetters(){
           }
         });
 
-        addFramesToLetter(model,data);
+        addFramesToLetter(model);
 
         memorialGroup.add(model);
         loadedLetters.push({
@@ -387,8 +444,8 @@ function loadLetters(){
         });
       },
       undefined,
-      error=>{
-        console.error("Error cargando modelo:", data.file, error);
+      () => {
+        createFallbackLetter(data);
       }
     );
   });
@@ -396,10 +453,32 @@ function loadLetters(){
 
 loadLetters();
 
+/* LETTER BUTTONS */
+
+const letterButtons = document.getElementById("letterButtons");
+
+letterFiles.forEach(data => {
+  const button = document.createElement("button");
+  button.textContent = data.label;
+
+  button.addEventListener("click", () => {
+    const letter = loadedLetters.find(item => item.key === data.key);
+
+    if(letter){
+      selectLetter(letter);
+      focusObject(letter.object,7);
+    }
+  });
+
+  letterButtons.appendChild(button);
+});
+
+/* INTERACTION */
+
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-renderer.domElement.addEventListener("click",event=>{
+renderer.domElement.addEventListener("click", event => {
   const rect = renderer.domElement.getBoundingClientRect();
 
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -409,25 +488,25 @@ renderer.domElement.addEventListener("click",event=>{
 
   const intersects = raycaster.intersectObjects(memorialGroup.children,true);
 
-  if(intersects.length > 0){
-    const hit = intersects[0].object;
+  if(intersects.length === 0) return;
 
-    if(hit.userData.isFrame){
-      openModal(hit.userData.memory);
-      return;
-    }
+  const hit = intersects[0].object;
 
-    let parent = hit;
+  if(hit.userData.isFrame){
+    openModal(hit.userData.memory);
+    return;
+  }
 
-    while(parent.parent && parent.parent !== memorialGroup){
-      parent = parent.parent;
-    }
+  let parent = hit;
 
-    const found = loadedLetters.find(item => item.object === parent);
+  while(parent.parent && parent.parent !== memorialGroup){
+    parent = parent.parent;
+  }
 
-    if(found){
-      selectLetter(found);
-    }
+  const found = loadedLetters.find(item => item.object === parent);
+
+  if(found){
+    selectLetter(found);
   }
 });
 
@@ -441,6 +520,7 @@ function selectLetter(letter){
 function focusObject(object,distance = 7){
   const box = new THREE.Box3().setFromObject(object);
   const center = new THREE.Vector3();
+
   box.getCenter(center);
 
   controls.target.copy(center);
@@ -448,22 +528,22 @@ function focusObject(object,distance = 7){
   controls.update();
 }
 
-document.getElementById("isolateLetter").addEventListener("click",()=>{
+document.getElementById("isolateLetter").addEventListener("click", () => {
   if(!selectedLetter) return;
 
   isolatedMode = true;
 
-  loadedLetters.forEach(letter=>{
+  loadedLetters.forEach(letter => {
     letter.object.visible = letter.key === selectedLetter.key;
   });
 
   focusObject(selectedLetter.object,6);
 });
 
-document.getElementById("returnWord").addEventListener("click",()=>{
+document.getElementById("returnWord").addEventListener("click", () => {
   isolatedMode = false;
 
-  loadedLetters.forEach(letter=>{
+  loadedLetters.forEach(letter => {
     letter.object.visible = true;
   });
 
@@ -471,24 +551,10 @@ document.getElementById("returnWord").addEventListener("click",()=>{
   document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
 });
 
-document.getElementById("viewFullWord").addEventListener("click",()=>{
-  loadedLetters.forEach(letter=>{
-    letter.object.visible = true;
-  });
+document.getElementById("fullWordButton").addEventListener("click", () => {
+  isolatedMode = false;
 
-  focusObject(memorialGroup,18);
-});
-
-document.getElementById("zoomIn").addEventListener("click",()=>{
-  camera.position.multiplyScalar(0.9);
-});
-
-document.getElementById("zoomOut").addEventListener("click",()=>{
-  camera.position.multiplyScalar(1.1);
-});
-
-document.getElementById("resetView").addEventListener("click",()=>{
-  loadedLetters.forEach(letter=>{
+  loadedLetters.forEach(letter => {
     letter.object.visible = true;
   });
 
@@ -497,30 +563,24 @@ document.getElementById("resetView").addEventListener("click",()=>{
   controls.update();
 });
 
-document.getElementById("goHome").addEventListener("click",()=>{
-  window.scrollTo({ top:0, behavior:"smooth" });
+document.getElementById("zoomIn").addEventListener("click", () => {
+  camera.position.multiplyScalar(0.9);
 });
 
-document.getElementById("enterMemorial").addEventListener("click",()=>{
-  document.getElementById("memorialPage").scrollIntoView({ behavior:"smooth" });
+document.getElementById("zoomOut").addEventListener("click", () => {
+  camera.position.multiplyScalar(1.1);
 });
 
-const letterButtons = document.getElementById("letterButtons");
+document.getElementById("resetView").addEventListener("click", () => {
+  isolatedMode = false;
 
-letterFiles.forEach(data=>{
-  const button = document.createElement("button");
-  button.textContent = data.label;
-
-  button.addEventListener("click",()=>{
-    const letter = loadedLetters.find(item => item.key === data.key);
-
-    if(letter){
-      selectLetter(letter);
-      focusObject(letter.object,7);
-    }
+  loadedLetters.forEach(letter => {
+    letter.object.visible = true;
   });
 
-  letterButtons.appendChild(button);
+  controls.target.set(0,1.8,0);
+  camera.position.set(0,4.4,18);
+  controls.update();
 });
 
 function animate(){
@@ -537,18 +597,24 @@ function animate(){
 
 animate();
 
-window.addEventListener("resize",()=>{
+function resizeRenderer(){
+  if(!container.clientWidth || !container.clientHeight) return;
+
   camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
-});
+}
+
+window.addEventListener("resize", resizeRenderer);
+
+/* FORM */
 
 const personSelect = document.getElementById("personSelect");
 
 function populatePersonSelect(){
   personSelect.innerHTML = `<option value="">Selecciona una persona</option>`;
 
-  museumPeople.forEach(person=>{
+  museumPeople.forEach(person => {
     const option = document.createElement("option");
     option.value = person.id;
     option.textContent = `${person.name} — ${person.region}`;
@@ -558,7 +624,7 @@ function populatePersonSelect(){
 
 populatePersonSelect();
 
-document.getElementById("memoryForm").addEventListener("submit",async event=>{
+document.getElementById("memoryForm").addEventListener("submit", async event => {
   event.preventDefault();
 
   const person = museumPeople.find(item => item.id === personSelect.value);
@@ -577,15 +643,15 @@ document.getElementById("memoryForm").addEventListener("submit",async event=>{
   memories.unshift(newMemory);
   localStorage.setItem("memories", JSON.stringify(memories));
 
-  alert("Memoria agregada localmente. Para verla en los frames debes recargar la página.");
+  alert("Memoria agregada localmente. Recarga la página para verla reflejada en los frames.");
   event.target.reset();
 });
 
 function fileToObject(file){
-  return new Promise(resolve=>{
+  return new Promise(resolve => {
     const reader = new FileReader();
 
-    reader.onload = ()=>{
+    reader.onload = () => {
       resolve({
         name:file.name,
         type:getSimpleFileType(file.type),
@@ -605,12 +671,14 @@ function getSimpleFileType(mime){
   return "document";
 }
 
+/* MODAL */
+
 function openModal(memory){
   const modal = document.getElementById("memoryModal");
   const modalMedia = document.getElementById("modalMedia");
   const modalFiles = document.getElementById("modalFiles");
 
-  modal.style.display = "flex";
+  modal.classList.add("active");
   modalMedia.innerHTML = "";
   modalFiles.innerHTML = "";
 
@@ -642,19 +710,19 @@ function openModal(memory){
     }
   }
 
-  memory.files.forEach(file=>{
+  memory.files.forEach(file => {
     const li = document.createElement("li");
     li.textContent = file.name;
     modalFiles.appendChild(li);
   });
 }
 
-document.getElementById("closeModal").addEventListener("click",()=>{
-  document.getElementById("memoryModal").style.display = "none";
+document.getElementById("closeModal").addEventListener("click", () => {
+  document.getElementById("memoryModal").classList.remove("active");
 });
 
-document.getElementById("memoryModal").addEventListener("click",event=>{
+document.getElementById("memoryModal").addEventListener("click", event => {
   if(event.target.id === "memoryModal"){
-    document.getElementById("memoryModal").style.display = "none";
+    document.getElementById("memoryModal").classList.remove("active");
   }
 });

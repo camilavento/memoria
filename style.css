@@ -4,8 +4,10 @@
   box-sizing:border-box;
 }
 
-html{
-  scroll-behavior:smooth;
+html,
+body{
+  width:100%;
+  min-height:100%;
 }
 
 body{
@@ -16,7 +18,9 @@ body{
 }
 
 button,
-a{
+input,
+select,
+textarea{
   font-family:inherit;
 }
 
@@ -25,18 +29,20 @@ button{
   cursor:pointer;
 }
 
-a{
-  color:inherit;
-  text-decoration:none;
+.view{
+  display:none;
 }
 
-.lobby{
+.view.active{
+  display:block;
+}
+
+/* LOBBY */
+
+.lobby-view{
   min-height:100vh;
   position:relative;
   overflow:hidden;
-  display:flex;
-  align-items:center;
-  justify-content:center;
   background:#f5f1ea;
 }
 
@@ -48,15 +54,15 @@ a{
   z-index:0;
 }
 
-.lobby::after{
+.lobby-view::after{
   content:"";
   position:absolute;
   inset:0;
   z-index:1;
   pointer-events:none;
   background:
-    radial-gradient(circle at 8% 86%, rgba(242,184,116,0.22), transparent 28%),
-    radial-gradient(circle at 86% 70%, rgba(104,95,174,0.14), transparent 24%);
+    radial-gradient(circle at 8% 88%, rgba(242,184,116,0.22), transparent 28%),
+    radial-gradient(circle at 88% 74%, rgba(107,95,174,0.13), transparent 22%);
 }
 
 .brand{
@@ -64,31 +70,38 @@ a{
   top:34px;
   left:40px;
   z-index:3;
-  font-size:1rem;
-  line-height:0.95;
   text-transform:uppercase;
+  line-height:0.95;
+  font-size:1rem;
 }
 
 .lobby-links{
   position:absolute;
-  top:36px;
-  right:44px;
+  top:34px;
+  right:42px;
   z-index:3;
   display:grid;
   gap:12px;
-  text-align:right;
-  font-size:0.95rem;
+  justify-items:end;
 }
 
-.lobby-links a{
+.lobby-links button{
+  background:transparent;
+  color:#111;
   text-decoration:underline;
+  font-size:0.95rem;
 }
 
 .lobby-content{
   position:relative;
   z-index:3;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
   text-align:center;
-  width:min(900px, 90%);
+  padding:32px;
 }
 
 .lobby-content h1{
@@ -100,81 +113,76 @@ a{
 }
 
 .lobby-content p{
-  margin-top:20px;
+  margin-top:22px;
   text-transform:uppercase;
   letter-spacing:0.28em;
   font-size:0.85rem;
 }
 
 .lobby-actions{
-  margin-top:34px;
+  margin-top:36px;
   display:flex;
   justify-content:center;
   gap:14px;
   flex-wrap:wrap;
 }
 
-.lobby-actions button,
-.lobby-actions a{
+.lobby-actions button{
   padding:14px 24px;
   border-radius:999px;
   background:#17111f;
-  color:white;
-  border:1px solid rgba(17,17,17,0.3);
+  color:#fff;
 }
 
-.lobby-actions a{
-  background:rgba(255,255,255,0.35);
+.lobby-actions button:nth-child(2){
+  background:rgba(255,255,255,0.42);
   color:#111;
+  border:1px solid rgba(17,17,17,0.18);
   backdrop-filter:blur(10px);
 }
 
-.memorial-page{
-  min-height:100vh;
+/* MEMORIAL */
+
+.memorial-view.active{
   display:grid;
   grid-template-columns:150px 1fr;
-  background:
-    radial-gradient(circle at 90% 70%, rgba(104,95,174,0.14), transparent 24%),
-    #161410;
-  color:white;
+  min-height:100vh;
+  background:#15120f;
+  color:#fff;
 }
 
 .side-nav{
   min-height:100vh;
   padding:28px 16px;
-  background:rgba(0,0,0,0.42);
-  backdrop-filter:blur(12px);
+  background:rgba(0,0,0,0.46);
+  backdrop-filter:blur(14px);
   display:flex;
   flex-direction:column;
-  gap:14px;
-  position:sticky;
-  top:0;
+  gap:12px;
   z-index:10;
 }
 
 .side-brand{
-  font-size:1rem;
-  line-height:0.95;
   text-transform:uppercase;
-  margin-bottom:28px;
+  line-height:0.95;
+  font-size:1rem;
+  margin-bottom:26px;
 }
 
-.side-nav button,
-.side-nav a{
+.side-nav button{
   width:100%;
-  text-align:left;
   padding:12px;
   border-radius:14px;
-  color:white;
   background:transparent;
+  color:#fff;
+  text-align:left;
 }
 
-.side-nav button:hover,
-.side-nav a:hover{
+.side-nav button:hover{
   background:rgba(255,255,255,0.12);
 }
 
-.memorial-view{
+.memorial-main{
   position:relative;
   min-height:100vh;
 }
@@ -186,12 +194,12 @@ a{
   transform:translateX(-50%);
   z-index:8;
   display:flex;
-  gap:16px;
   align-items:center;
-  background:rgba(0,0,0,0.54);
-  backdrop-filter:blur(12px);
-  border-radius:999px;
+  gap:10px;
   padding:10px 14px;
+  border-radius:999px;
+  background:rgba(0,0,0,0.55);
+  backdrop-filter:blur(12px);
 }
 
 .viewer-toolbar button{
@@ -199,11 +207,11 @@ a{
   height:36px;
   border-radius:50%;
   background:transparent;
-  color:white;
-  border:1px solid rgba(255,255,255,0.3);
+  color:#fff;
+  border:1px solid rgba(255,255,255,0.32);
 }
 
-.viewer-hint{
+.viewer-toolbar span{
   font-size:0.82rem;
   opacity:0.86;
   white-space:nowrap;
@@ -213,16 +221,18 @@ a{
   width:100%;
   height:100vh;
   background:
-    linear-gradient(rgba(0,0,0,0.08), rgba(0,0,0,0.45)),
-    radial-gradient(circle at center, #3a332b, #12100d 70%);
+    linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.42)),
+    radial-gradient(circle at 74% 62%, rgba(107,95,174,0.18), transparent 26%),
+    radial-gradient(circle at 16% 80%, rgba(242,184,116,0.12), transparent 24%),
+    #181410;
 }
 
 .letter-panel{
   position:absolute;
   right:28px;
   bottom:28px;
-  width:min(360px, calc(100% - 56px));
   z-index:8;
+  width:min(360px, calc(100% - 56px));
   padding:22px;
   border-radius:24px;
   background:rgba(245,241,234,0.9);
@@ -232,19 +242,20 @@ a{
 
 .eyebrow{
   font-size:0.72rem;
-  letter-spacing:0.18em;
   text-transform:uppercase;
+  letter-spacing:0.18em;
   margin-bottom:12px;
 }
 
 .letter-panel h2{
   font-size:2rem;
+  font-weight:400;
   margin-bottom:8px;
 }
 
 .letter-panel p{
   line-height:1.5;
-  opacity:0.75;
+  opacity:0.74;
   margin-bottom:16px;
 }
 
@@ -260,7 +271,7 @@ a{
   height:38px;
   border-radius:50%;
   background:#17111f;
-  color:white;
+  color:#fff;
 }
 
 .letter-panel > button{
@@ -269,31 +280,64 @@ a{
   border-radius:999px;
   margin-top:8px;
   background:#17111f;
-  color:white;
+  color:#fff;
 }
 
-.content-section{
-  width:min(1100px, calc(100% - 32px));
-  margin:80px auto;
+/* CONTENT VIEWS */
+
+.content-view{
+  min-height:100vh;
+  padding:34px;
+  background:
+    radial-gradient(circle at 88% 80%, rgba(107,95,174,0.1), transparent 24%),
+    #f5f1ea;
+}
+
+.back-button{
+  padding:12px 18px;
+  border-radius:999px;
+  background:#17111f;
+  color:#fff;
+  margin-bottom:28px;
+}
+
+.content-card{
+  width:min(1100px, 100%);
+  min-height:calc(100vh - 130px);
+  margin:0 auto;
   display:grid;
   grid-template-columns:0.85fr 1fr;
   gap:42px;
-  padding:36px;
+  align-items:center;
+  padding:38px;
   border-radius:32px;
   background:rgba(255,255,255,0.78);
   border:1px solid rgba(17,17,17,0.08);
 }
 
-.content-section h2{
+.content-card h2{
   font-size:clamp(2rem, 5vw, 4rem);
   line-height:0.95;
-  margin-bottom:18px;
   font-weight:400;
+  margin-bottom:18px;
 }
 
-.content-section p{
+.content-card p{
   line-height:1.6;
-  opacity:0.75;
+  opacity:0.76;
+}
+
+.about-card{
+  display:block;
+  max-width:850px;
+}
+
+.about-card button{
+  margin-top:24px;
+  padding:14px 22px;
+  border-radius:999px;
+  background:#17111f;
+  color:#fff;
 }
 
 .memory-form{
@@ -314,8 +358,8 @@ textarea{
   padding:14px;
   border-radius:16px;
   border:1px solid rgba(17,17,17,0.16);
-  background:white;
-  font-family:inherit;
+  background:#fff;
+  color:#111;
 }
 
 textarea{
@@ -337,12 +381,10 @@ textarea{
   padding:14px 18px;
   border-radius:999px;
   background:#17111f;
-  color:white;
+  color:#fff;
 }
 
-.about-section{
-  display:block;
-}
+/* MODAL */
 
 .modal{
   position:fixed;
@@ -350,19 +392,24 @@ textarea{
   display:none;
   justify-content:center;
   align-items:center;
-  background:rgba(0,0,0,0.72);
   z-index:100;
+  background:rgba(0,0,0,0.72);
   padding:24px;
 }
 
+.modal.active{
+  display:flex;
+}
+
 .modal-content{
-  width:min(520px,92%);
+  width:min(520px, 92%);
   max-height:88vh;
   overflow:auto;
-  background:#f5f1ea;
-  border-radius:28px;
-  padding:24px;
   position:relative;
+  padding:24px;
+  border-radius:28px;
+  background:#f5f1ea;
+  color:#111;
 }
 
 .close{
@@ -373,7 +420,7 @@ textarea{
   height:36px;
   border-radius:50%;
   background:#17111f;
-  color:white;
+  color:#fff;
 }
 
 #modalMedia img,
@@ -412,25 +459,24 @@ textarea{
 }
 
 @media(max-width:900px){
-  .memorial-page{
+  .memorial-view.active{
     grid-template-columns:1fr;
   }
 
   .side-nav{
     min-height:auto;
-    position:relative;
     flex-direction:row;
     overflow:auto;
   }
 
   .viewer-toolbar{
     width:calc(100% - 32px);
-    justify-content:center;
     flex-wrap:wrap;
-    border-radius:22px;
+    justify-content:center;
+    border-radius:24px;
   }
 
-  .content-section{
+  .content-card{
     grid-template-columns:1fr;
   }
 

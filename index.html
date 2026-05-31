@@ -8,14 +8,14 @@
 </head>
 
 <body>
-  <section id="lobby" class="lobby">
+  <section id="lobbyView" class="view active lobby-view">
     <canvas id="lobbyCanvas"></canvas>
 
     <div class="brand">Proyecto<br>MEMORIA</div>
 
     <nav class="lobby-links">
-      <a href="#uploadSection">¿Cómo subir una memoria?</a>
-      <a href="#aboutSection">¿Qué es Proyecto MEMORIA?</a>
+      <button data-view="uploadView">¿Cómo subir una memoria?</button>
+      <button data-view="aboutView">¿Qué es Proyecto MEMORIA?</button>
     </nav>
 
     <div class="lobby-content">
@@ -23,60 +23,57 @@
       <p>Un memorial digital colectivo</p>
 
       <div class="lobby-actions">
-        <button id="enterMemorial">Entrar al memorial</button>
-        <a href="#uploadSection">Aportar una memoria</a>
+        <button data-view="memorialView">Entrar al memorial</button>
+        <button data-view="uploadView">Aportar una memoria</button>
       </div>
     </div>
   </section>
 
-  <main>
-    <section id="memorialPage" class="memorial-page">
-      <aside class="side-nav">
-        <div class="side-brand">Proyecto<br>MEMORIA</div>
+  <section id="memorialView" class="view memorial-view">
+    <aside class="side-nav">
+      <div class="side-brand">Proyecto<br>MEMORIA</div>
 
-        <button id="goHome">Inicio</button>
-        <button id="viewFullWord">Ver palabra completa</button>
-        <a href="#uploadSection">Subir memoria</a>
-        <a href="#aboutSection">Sobre el proyecto</a>
-      </aside>
+      <button data-view="lobbyView">Inicio</button>
+      <button id="fullWordButton">Palabra completa</button>
+      <button data-view="uploadView">Aportar memoria</button>
+      <button data-view="aboutView">Sobre el proyecto</button>
+    </aside>
 
-      <section class="memorial-view">
-        <header class="viewer-toolbar">
-          <div>
-            <button id="zoomOut">−</button>
-            <button id="zoomIn">+</button>
-            <button id="resetView">Reset</button>
-          </div>
+    <main class="memorial-main">
+      <header class="viewer-toolbar">
+        <button id="zoomOut">−</button>
+        <button id="zoomIn">+</button>
+        <button id="resetView">Reset</button>
+        <span>Arrastra para girar · Rueda para acercar · Click en una letra o frame</span>
+      </header>
 
-          <div class="viewer-hint">
-            Arrastra para girar · Rueda para acercar · Click en una letra
-          </div>
-        </header>
+      <div id="threeContainer" class="three-container"></div>
 
-        <div id="threeContainer" class="three-container"></div>
+      <section class="letter-panel">
+        <p class="eyebrow">Exploración 3D</p>
+        <h2 id="selectedLetterTitle">MEMORIA</h2>
+        <p id="selectedLetterText">
+          Selecciona una letra para verla por separado y explorar sus frames en frente, lados, atrás y arriba.
+        </p>
 
-        <section class="letter-panel">
-          <p class="eyebrow">Exploración 3D</p>
-          <h2 id="selectedLetterTitle">MEMORIA</h2>
-          <p id="selectedLetterText">
-            Selecciona una letra para verla por separado, girarla y explorar sus frames.
-          </p>
+        <div id="letterButtons" class="letter-buttons"></div>
 
-          <div class="letter-buttons" id="letterButtons"></div>
-
-          <button id="isolateLetter">Ver letra seleccionada</button>
-          <button id="returnWord">Volver a palabra completa</button>
-        </section>
+        <button id="isolateLetter">Ver letra seleccionada</button>
+        <button id="returnWord">Volver a palabra completa</button>
       </section>
-    </section>
+    </main>
+  </section>
 
-    <section id="uploadSection" class="content-section">
+  <section id="uploadView" class="view content-view">
+    <button class="back-button" data-view="lobbyView">← Volver al inicio</button>
+
+    <section class="content-card">
       <div>
         <p class="eyebrow">Participación</p>
         <h2>¿Cómo subir una memoria?</h2>
         <p>
-          Selecciona una persona detenida desaparecida desde la base del proyecto y sube
-          fotografías, videos, audios, documentos o escritos para complementar su memoria.
+          Selecciona una persona detenida desaparecida desde la base del proyecto y sube fotografías,
+          videos, audios, documentos o escritos para complementar su ficha conmemorativa.
         </p>
       </div>
 
@@ -127,18 +124,23 @@
         <button type="submit">Construir memoria</button>
       </form>
     </section>
+  </section>
 
-    <section id="aboutSection" class="content-section about-section">
+  <section id="aboutView" class="view content-view">
+    <button class="back-button" data-view="lobbyView">← Volver al inicio</button>
+
+    <section class="content-card about-card">
       <p class="eyebrow">Proyecto MEMORIA</p>
       <h2>Un memorial digital vivo</h2>
       <p>
-        Proyecto MEMORIA busca complementar el archivo de personas detenidas desaparecidas
-        durante la dictadura en Chile mediante aportes ciudadanos, familiares y documentales.
-        La información oficial no se reemplaza: se amplía con memorias, imágenes, archivos
-        y testimonios vinculados a cada persona.
+        Proyecto MEMORIA busca complementar el archivo de personas detenidas desaparecidas durante la
+        dictadura en Chile mediante aportes ciudadanos, familiares y documentales. La información oficial
+        no se reemplaza: se amplía con memorias, imágenes, archivos y testimonios vinculados a cada persona.
       </p>
+
+      <button data-view="memorialView">Entrar al memorial</button>
     </section>
-  </main>
+  </section>
 
   <section id="memoryModal" class="modal">
     <div class="modal-content">
