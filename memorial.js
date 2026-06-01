@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const memories = [
   {
@@ -27,60 +26,12 @@ const memories = [
 ];
 
 const letterMaps = {
-  M: [
-    "10001",
-    "11011",
-    "10101",
-    "10101",
-    "10001",
-    "10001",
-    "10001"
-  ],
-  E: [
-    "11111",
-    "10000",
-    "10000",
-    "11110",
-    "10000",
-    "10000",
-    "11111"
-  ],
-  O: [
-    "01110",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "01110"
-  ],
-  R: [
-    "11110",
-    "10001",
-    "10001",
-    "11110",
-    "10100",
-    "10010",
-    "10001"
-  ],
-  I: [
-    "11111",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "11111"
-  ],
-  A: [
-    "01110",
-    "10001",
-    "10001",
-    "11111",
-    "10001",
-    "10001",
-    "10001"
-  ]
+  M: ["10001","11011","10101","10101","10001","10001","10001"],
+  E: ["11111","10000","10000","11110","10000","10000","11111"],
+  O: ["01110","10001","10001","10001","10001","10001","01110"],
+  R: ["11110","10001","10001","11110","10100","10010","10001"],
+  I: ["11111","00100","00100","00100","00100","00100","11111"],
+  A: ["01110","10001","10001","11111","10001","10001","10001"]
 };
 
 const container = document.getElementById("threeContainer");
@@ -88,13 +39,13 @@ const container = document.getElementById("threeContainer");
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  42,
+  38,
   container.clientWidth / container.clientHeight,
   0.1,
   1000
 );
 
-camera.position.set(0, 4.8, 20);
+camera.position.set(0, 3.6, 21);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -109,29 +60,29 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.target.set(0, 2.4, 0);
+controls.target.set(0, 2.7, 0);
 controls.minDistance = 5;
 controls.maxDistance = 38;
 
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
 
-scene.add(new THREE.AmbientLight(0xfff2df, 1.35));
+scene.add(new THREE.AmbientLight(0xfff2df, 1.45));
 
 const keyLight = new THREE.DirectionalLight(0xffd9a3, 3);
 keyLight.position.set(-6, 9, 8);
 scene.add(keyLight);
 
-const purpleLight = new THREE.PointLight(0x6b5fae, 2.2, 24);
+const purpleLight = new THREE.PointLight(0x6b5fae, 1.8, 22);
 purpleLight.position.set(8, 4, -3);
 scene.add(purpleLight);
 
-const warmLight = new THREE.PointLight(0xffc27a, 2.3, 20);
+const warmLight = new THREE.PointLight(0xffc27a, 2.1, 18);
 warmLight.position.set(-8, 3, 6);
 scene.add(warmLight);
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(70, 36),
+  new THREE.PlaneGeometry(72, 36),
   new THREE.MeshStandardMaterial({
     color: 0x2b241c,
     roughness: 0.62,
@@ -144,7 +95,7 @@ floor.position.y = -0.05;
 scene.add(floor);
 
 const wall = new THREE.Mesh(
-  new THREE.PlaneGeometry(70, 24),
+  new THREE.PlaneGeometry(72, 24),
   new THREE.MeshStandardMaterial({
     color: 0x3a332b,
     roughness: 0.85
@@ -154,16 +105,14 @@ const wall = new THREE.Mesh(
 wall.position.set(0, 8, -8);
 scene.add(wall);
 
-const loader = new GLTFLoader();
-
 const letterFiles = [
-  { key: "M1", label: "M", file: "models/M1%20memoria.glb", x: -9.6 },
-  { key: "E", label: "E", file: "models/E%20memoria.glb", x: -6.4 },
-  { key: "M2", label: "M", file: "models/M2%20memoria.glb", x: -3.2 },
-  { key: "O", label: "O", file: "models/O%20memoria.glb", x: 0 },
-  { key: "R", label: "R", file: "models/R%20memoria.glb", x: 3.2 },
-  { key: "I", label: "I", file: "models/I%20memoria.glb", x: 6.4 },
-  { key: "A", label: "A", file: "models/A%20memoria.glb", x: 9.6 }
+  { key: "M1", label: "M", x: -9.6 },
+  { key: "E", label: "E", x: -6.4 },
+  { key: "M2", label: "M", x: -3.2 },
+  { key: "O", label: "O", x: 0 },
+  { key: "R", label: "R", x: 3.2 },
+  { key: "I", label: "I", x: 6.4 },
+  { key: "A", label: "A", x: 9.6 }
 ];
 
 let loadedLetters = [];
@@ -245,7 +194,6 @@ function createFrame(memory, width, height) {
 
   backing.userData.isFrame = true;
   backing.userData.memory = memory;
-
   photo.userData.isFrame = true;
   photo.userData.memory = memory;
 
@@ -255,16 +203,27 @@ function createFrame(memory, width, height) {
   return group;
 }
 
+function createCellBlock(width, height, depth) {
+  return new THREE.Mesh(
+    new THREE.BoxGeometry(width, height, depth),
+    new THREE.MeshStandardMaterial({
+      color: 0x4a3524,
+      roughness: 0.52,
+      metalness: 0.18
+    })
+  );
+}
+
 function create3DLetter(data) {
   const group = new THREE.Group();
   group.name = data.key;
-  group.position.set(data.x, 2.8, 0);
+  group.position.set(data.x, 2.7, 0);
 
   const map = letterMaps[data.label];
 
-  const cell = 0.46;
-  const frameW = 0.34;
-  const frameH = 0.48;
+  const cell = 0.5;
+  const frameW = 0.36;
+  const frameH = 0.5;
   const depth = 0.42;
 
   let memoryIndex = 0;
@@ -278,26 +237,18 @@ function create3DLetter(data) {
       const x = (col - 2) * cell;
       const y = (3 - row) * cell;
 
+      const block = createCellBlock(frameW * 1.2, frameH * 1.2, depth * 1.8);
+      block.position.set(x, y, 0);
+      group.add(block);
+
       const front = createFrame(memory, frameW, frameH);
-      front.position.set(x, y, depth);
+      front.position.set(x, y, depth + 0.02);
       group.add(front);
 
       const back = createFrame(memory, frameW, frameH);
-      back.position.set(x, y, -depth);
+      back.position.set(x, y, -depth - 0.02);
       back.rotation.y = Math.PI;
       group.add(back);
-
-      const block = new THREE.Mesh(
-        new THREE.BoxGeometry(frameW * 1.2, frameH * 1.2, depth * 1.8),
-        new THREE.MeshStandardMaterial({
-          color: 0x4a3524,
-          roughness: 0.52,
-          metalness: 0.18
-        })
-      );
-
-      block.position.set(x, y, 0);
-      group.add(block);
 
       memoryIndex++;
     });
@@ -312,12 +263,12 @@ function create3DLetter(data) {
     const memory = memories[(memoryIndex + index) % memories.length];
 
     const left = createFrame(memory, frameW * 0.82, frameH);
-    left.position.set(-2.55 * cell, y, 0);
+    left.position.set(-2.48 * cell, y, 0);
     left.rotation.y = -Math.PI / 2;
     group.add(left);
 
     const right = createFrame(memory, frameW * 0.82, frameH);
-    right.position.set(2.55 * cell, y, 0);
+    right.position.set(2.48 * cell, y, 0);
     right.rotation.y = Math.PI / 2;
     group.add(right);
   });
@@ -331,7 +282,7 @@ function create3DLetter(data) {
     const memory = memories[(memoryIndex + activeRows.length + col) % memories.length];
 
     const top = createFrame(memory, frameW, frameH * 0.82);
-    top.position.set(x, 3.55 * cell, 0);
+    top.position.set(x, 3.48 * cell, 0);
     top.rotation.x = -Math.PI / 2;
     group.add(top);
   }
@@ -345,52 +296,10 @@ function create3DLetter(data) {
     label: data.label,
     object: group
   });
-
-  loadDecorativeGLB(data, group);
-}
-
-function loadDecorativeGLB(data, group) {
-  loader.load(
-    data.file,
-    gltf => {
-      const model = gltf.scene;
-
-      const box = new THREE.Box3().setFromObject(model);
-      const size = new THREE.Vector3();
-      const center = new THREE.Vector3();
-
-      box.getSize(size);
-      box.getCenter(center);
-
-      model.position.sub(center);
-
-      const scale = 3.2 / Math.max(size.y, 0.01);
-      model.scale.setScalar(scale);
-
-      model.traverse(child => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({
-            color: 0x3a281c,
-            roughness: 0.58,
-            metalness: 0.18,
-            transparent: true,
-            opacity: 0.35
-          });
-        }
-      });
-
-      model.position.z = -0.08;
-      group.add(model);
-    },
-    undefined,
-    () => {}
-  );
 }
 
 function buildMemorial() {
-  letterFiles.forEach(data => {
-    create3DLetter(data);
-  });
+  letterFiles.forEach(data => create3DLetter(data));
 }
 
 buildMemorial();
@@ -459,8 +368,8 @@ document.getElementById("returnWord").addEventListener("click", () => {
     letter.object.visible = true;
   });
 
-  controls.target.set(0, 2.4, 0);
-  camera.position.set(0, 4.8, 20);
+  controls.target.set(0, 2.7, 0);
+  camera.position.set(0, 3.6, 21);
   controls.update();
 
   document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
@@ -473,8 +382,8 @@ document.getElementById("fullWordButton").addEventListener("click", () => {
     letter.object.visible = true;
   });
 
-  controls.target.set(0, 2.4, 0);
-  camera.position.set(0, 4.8, 20);
+  controls.target.set(0, 2.7, 0);
+  camera.position.set(0, 3.6, 21);
   controls.update();
 
   document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
@@ -495,8 +404,8 @@ document.getElementById("resetView").addEventListener("click", () => {
     letter.object.visible = true;
   });
 
-  controls.target.set(0, 2.4, 0);
-  camera.position.set(0, 4.8, 20);
+  controls.target.set(0, 2.7, 0);
+  camera.position.set(0, 3.6, 21);
   controls.update();
 
   document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
@@ -516,10 +425,7 @@ renderer.domElement.addEventListener("click", event => {
 
   raycaster.setFromCamera(pointer, camera);
 
-  const intersects = raycaster.intersectObjects(
-    memorialGroup.children,
-    true
-  );
+  const intersects = raycaster.intersectObjects(memorialGroup.children, true);
 
   if (!intersects.length) return;
 
@@ -538,9 +444,7 @@ renderer.domElement.addEventListener("click", event => {
 
   const found = loadedLetters.find(item => item.object === parent);
 
-  if (found) {
-    selectLetter(found);
-  }
+  if (found) selectLetter(found);
 });
 
 function openModal(memory) {
@@ -553,14 +457,10 @@ function openModal(memory) {
   modalMedia.innerHTML = "";
   modalFiles.innerHTML = "";
 
-  document.getElementById("modalTitle").textContent =
-    memory.name;
-
+  document.getElementById("modalTitle").textContent = memory.name;
   document.getElementById("modalMeta").textContent =
     `${memory.type} · Aporte: ${memory.relation}`;
-
-  document.getElementById("modalMessage").textContent =
-    memory.message;
+  document.getElementById("modalMessage").textContent = memory.message;
 
   const preview = memory.files[0];
 
