@@ -462,6 +462,7 @@ textarea{
   .content-card{
     grid-template-columns:1fr;
   }
-}.letter-panel{
+  .letter-panel{
   display:none !important;
+}
 }
