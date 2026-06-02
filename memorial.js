@@ -33,60 +33,12 @@ const memories = [
 ];
 
 const letterMaps = {
-  M: [
-    "10001",
-    "11011",
-    "10101",
-    "10101",
-    "10001",
-    "10001",
-    "10001"
-  ],
-  E: [
-    "11111",
-    "10000",
-    "10000",
-    "11110",
-    "10000",
-    "10000",
-    "11111"
-  ],
-  O: [
-    "01110",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "10001",
-    "01110"
-  ],
-  R: [
-    "11110",
-    "10001",
-    "10001",
-    "11110",
-    "10100",
-    "10010",
-    "10001"
-  ],
-  I: [
-    "11111",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "00100",
-    "11111"
-  ],
-  A: [
-    "01110",
-    "10001",
-    "10001",
-    "11111",
-    "10001",
-    "10001",
-    "10001"
-  ]
+  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"]
 };
 
 const container = document.getElementById("threeContainer");
@@ -94,13 +46,13 @@ const container = document.getElementById("threeContainer");
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(
-  35,
+  34,
   container.clientWidth / container.clientHeight,
   0.1,
   1000
 );
 
-camera.position.set(0, 4.8, 34);
+camera.position.set(0, 4.3, 24);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -115,29 +67,29 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.target.set(0, 3.2, 0);
-controls.minDistance = 10;
-controls.maxDistance = 55;
+controls.target.set(0, 3.1, 0);
+controls.minDistance = 8;
+controls.maxDistance = 45;
 
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
 
-scene.add(new THREE.AmbientLight(0xfff2df, 1.5));
+scene.add(new THREE.AmbientLight(0xfff2df, 1.6));
 
-const keyLight = new THREE.DirectionalLight(0xffd9a3, 3.6);
-keyLight.position.set(-7, 10, 9);
+const keyLight = new THREE.DirectionalLight(0xffd9a3, 3.8);
+keyLight.position.set(-6, 10, 10);
 scene.add(keyLight);
 
 const warmLight = new THREE.PointLight(0xffc27a, 2.8, 24);
-warmLight.position.set(-8, 4, 8);
+warmLight.position.set(-7, 4, 7);
 scene.add(warmLight);
 
-const purpleLight = new THREE.PointLight(0x6b5fae, 1.5, 22);
-purpleLight.position.set(9, 5, -4);
+const purpleLight = new THREE.PointLight(0x6b5fae, 1.4, 22);
+purpleLight.position.set(8, 5, -4);
 scene.add(purpleLight);
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(95, 44),
+  new THREE.PlaneGeometry(80, 38),
   new THREE.MeshStandardMaterial({
     color: 0x2b241c,
     roughness: 0.65,
@@ -150,24 +102,24 @@ floor.position.y = -0.05;
 scene.add(floor);
 
 const wall = new THREE.Mesh(
-  new THREE.PlaneGeometry(95, 28),
+  new THREE.PlaneGeometry(80, 26),
   new THREE.MeshStandardMaterial({
     color: 0x3a332b,
     roughness: 0.85
   })
 );
 
-wall.position.set(0, 8.8, -4.2);
+wall.position.set(0, 8.4, -3.8);
 scene.add(wall);
 
 const letters = [
-  { label: "M", x: -18 },
-  { label: "E", x: -12 },
-  { label: "M", x: -6 },
+  { label: "M", x: -10.8 },
+  { label: "E", x: -7.2 },
+  { label: "M", x: -3.6 },
   { label: "O", x: 0 },
-  { label: "R", x: 6 },
-  { label: "I", x: 12 },
-  { label: "A", x: 18 }
+  { label: "R", x: 3.6 },
+  { label: "I", x: 7.2 },
+  { label: "A", x: 10.8 }
 ];
 
 function makePhotoTexture(memory) {
@@ -215,6 +167,7 @@ function makePhotoTexture(memory) {
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
 
   return texture;
 }
@@ -222,8 +175,8 @@ function makePhotoTexture(memory) {
 function createFrame(memory) {
   const group = new THREE.Group();
 
-  const backing = new THREE.Mesh(
-    new THREE.BoxGeometry(0.72, 0.9, 0.08),
+  const frameBack = new THREE.Mesh(
+    new THREE.BoxGeometry(0.56, 0.72, 0.08),
     new THREE.MeshStandardMaterial({
       color: 0x2b1d13,
       roughness: 0.72,
@@ -232,24 +185,24 @@ function createFrame(memory) {
   );
 
   const photo = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.6, 0.78),
+    new THREE.PlaneGeometry(0.46, 0.62),
     new THREE.MeshStandardMaterial({
       map: makePhotoTexture(memory),
       roughness: 0.65,
       metalness: 0.04,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     })
   );
 
-  photo.position.z = 0.052;
+  photo.position.z = 0.051;
 
-  backing.userData.isFrame = true;
-  backing.userData.memory = memory;
+  frameBack.userData.isFrame = true;
+  frameBack.userData.memory = memory;
 
   photo.userData.isFrame = true;
   photo.userData.memory = memory;
 
-  group.add(backing);
+  group.add(frameBack);
   group.add(photo);
 
   return group;
@@ -257,11 +210,11 @@ function createFrame(memory) {
 
 function createBlock() {
   const block = new THREE.Mesh(
-    new THREE.BoxGeometry(0.78, 0.9, 0.7),
+    new THREE.BoxGeometry(0.62, 0.76, 0.8),
     new THREE.MeshStandardMaterial({
       color: 0x4a2d17,
-      roughness: 0.55,
-      metalness: 0.14
+      roughness: 0.56,
+      metalness: 0.12
     })
   );
 
@@ -277,9 +230,9 @@ function createLetter(label, startX) {
 
   const map = letterMaps[label];
 
-  const cellW = 0.78;
-  const cellH = 0.9;
-  const gap = 0.03;
+  const cellW = 0.62;
+  const cellH = 0.76;
+  const gap = 0.02;
 
   let memoryIndex = 0;
 
@@ -297,7 +250,7 @@ function createLetter(label, startX) {
       const memory = memories[memoryIndex % memories.length];
       const frame = createFrame(memory);
 
-      frame.position.set(x, y, 0.42);
+      frame.position.set(x, y, 0.47);
       frame.rotation.set(0, 0, 0);
 
       letterGroup.add(frame);
@@ -314,8 +267,8 @@ letters.forEach(letter => {
 });
 
 document.getElementById("fullWordButton").addEventListener("click", () => {
-  controls.target.set(0, 3.2, 0);
-  camera.position.set(0, 4.8, 34);
+  controls.target.set(0, 3.1, 0);
+  camera.position.set(0, 4.3, 24);
   controls.update();
 });
 
@@ -328,8 +281,8 @@ document.getElementById("zoomOut").addEventListener("click", () => {
 });
 
 document.getElementById("resetView").addEventListener("click", () => {
-  controls.target.set(0, 3.2, 0);
-  camera.position.set(0, 4.8, 34);
+  controls.target.set(0, 3.1, 0);
+  camera.position.set(0, 4.3, 24);
   controls.update();
 });
 
