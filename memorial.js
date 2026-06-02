@@ -26,15 +26,6 @@ const memories = [
   }
 ];
 
-const letterMaps = {
-  M: ["10001","11011","10101","10101","10001","10001","10001"],
-  E: ["11111","10000","10000","11110","10000","10000","11111"],
-  O: ["01110","10001","10001","10001","10001","10001","01110"],
-  R: ["11110","10001","10001","11110","10100","10010","10001"],
-  I: ["11111","00100","00100","00100","00100","00100","11111"],
-  A: ["01110","10001","10001","11111","10001","10001","10001"]
-};
-
 const container = document.getElementById("threeContainer");
 
 const scene = new THREE.Scene();
@@ -46,7 +37,7 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 3.8, 24);
+camera.position.set(0, 4.5, 28);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -61,16 +52,16 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.target.set(0, 2.7, 0);
-controls.minDistance = 5;
+controls.target.set(0, 3, 0);
+controls.minDistance = 8;
 controls.maxDistance = 45;
 
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
 
-scene.add(new THREE.AmbientLight(0xfff2df, 1.45));
+scene.add(new THREE.AmbientLight(0xfff2df, 1.6));
 
-const keyLight = new THREE.DirectionalLight(0xffd9a3, 3.2);
+const keyLight = new THREE.DirectionalLight(0xffd9a3, 3.4);
 keyLight.position.set(-6, 9, 8);
 scene.add(keyLight);
 
@@ -78,12 +69,12 @@ const purpleLight = new THREE.PointLight(0x6b5fae, 1.8, 22);
 purpleLight.position.set(8, 4, -3);
 scene.add(purpleLight);
 
-const warmLight = new THREE.PointLight(0xffc27a, 2.1, 18);
+const warmLight = new THREE.PointLight(0xffc27a, 2.4, 20);
 warmLight.position.set(-8, 3, 6);
 scene.add(warmLight);
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(72, 36),
+  new THREE.PlaneGeometry(80, 38),
   new THREE.MeshStandardMaterial({
     color: 0x2b241c,
     roughness: 0.62,
@@ -96,7 +87,7 @@ floor.position.y = -0.05;
 scene.add(floor);
 
 const wall = new THREE.Mesh(
-  new THREE.PlaneGeometry(72, 24),
+  new THREE.PlaneGeometry(80, 26),
   new THREE.MeshStandardMaterial({
     color: 0x3a332b,
     roughness: 0.85
@@ -109,16 +100,14 @@ scene.add(wall);
 const loader = new GLTFLoader();
 
 const letterFiles = [
-  { key: "M1", label: "M", file: "models/M1%20memoria.glb", x: -18 },
-  { key: "E", label: "E", file: "models/E%20memoria.glb", x: -12 },
-  { key: "M2", label: "M", file: "models/M2%20memoria.glb", x: -6 },
-  { key: "O", label: "O", file: "models/O%20memoria.glb", x: 0 },
-  { key: "R", label: "R", file: "models/R%20memoria.glb", x: 6 },
-  { key: "I", label: "I", file: "models/I%20memoria.glb", x: 12 },
-  { key: "A", label: "A", file: "models/A%20memoria.glb", x: 18 }
+  { key: "M1", label: "M", file: "models/M1 memoria.glb", x: -18 },
+  { key: "E", label: "E", file: "models/E memoria.glb", x: -12 },
+  { key: "M2", label: "M", file: "models/M2 memoria.glb", x: -6 },
+  { key: "O", label: "O", file: "models/O memoria.glb", x: 0 },
+  { key: "R", label: "R", file: "models/R memoria.glb", x: 6 },
+  { key: "I", label: "I", file: "models/I memoria.glb", x: 12 },
+  { key: "A", label: "A", file: "models/A memoria.glb", x: 18 }
 ];
-
-let loadedLetters = [];
 
 function makePhotoTexture(memory) {
   const canvas = document.createElement("canvas");
@@ -169,20 +158,20 @@ function makePhotoTexture(memory) {
   return texture;
 }
 
-function createFrame(memory, width, height) {
+function createFrame(memory) {
   const group = new THREE.Group();
 
   const backing = new THREE.Mesh(
-    new THREE.BoxGeometry(width * 1.12, height * 1.12, 0.05),
+    new THREE.BoxGeometry(1.45, 1.85, 0.08),
     new THREE.MeshStandardMaterial({
       color: 0x2b1d13,
       roughness: 0.7,
-      metalness: 0.08
+      metalness: 0.1
     })
   );
 
   const photo = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
+    new THREE.PlaneGeometry(1.25, 1.65),
     new THREE.MeshStandardMaterial({
       map: makePhotoTexture(memory),
       roughness: 0.65,
@@ -191,7 +180,7 @@ function createFrame(memory, width, height) {
     })
   );
 
-  photo.position.z = 0.035;
+  photo.position.z = 0.055;
 
   backing.userData.isFrame = true;
   backing.userData.memory = memory;
@@ -214,9 +203,8 @@ function normalizeGLB(model) {
 
   model.position.sub(center);
 
-  const targetHeight = 4.9;
-  const scale = targetHeight / Math.max(size.y, size.z, 0.01);
-
+  const targetHeight = 4.7;
+  const scale = targetHeight / Math.max(size.y, 0.01);
   model.scale.setScalar(scale);
 
   return model;
@@ -237,81 +225,7 @@ function styleGLB(model) {
   });
 }
 
-function createFramesForLetter(letterGroup, label) {
-  const map = letterMaps[label];
-  const framesGroup = new THREE.Group();
-
-  framesGroup.name = "frames";
-  letterGroup.add(framesGroup);
-
-  const cell = 0.5;
-  const frameW = 0.36;
-  const frameH = 0.5;
-
-  const frontZ = 1.05;
-  const backZ = -1.05;
-  const sideX = 1.42;
-  const topY = 2.05;
-
-  let memoryIndex = 0;
-
-  map.forEach((rowPattern, row) => {
-    rowPattern.split("").forEach((value, col) => {
-      if (value !== "1") return;
-
-      const memory = memories[memoryIndex % memories.length];
-
-      const x = (col - 2) * cell;
-      const y = (3 - row) * cell;
-
-      const front = createFrame(memory, frameW, frameH);
-      front.position.set(x, y, frontZ);
-      framesGroup.add(front);
-
-      const back = createFrame(memory, frameW, frameH);
-      back.position.set(x, y, backZ);
-      back.rotation.y = Math.PI;
-      framesGroup.add(back);
-
-      memoryIndex++;
-    });
-  });
-
-  const activeRows = map
-    .map((rowPattern, row) => rowPattern.includes("1") ? row : null)
-    .filter(row => row !== null);
-
-  activeRows.forEach((row, index) => {
-    const y = (3 - row) * cell;
-    const memory = memories[(memoryIndex + index) % memories.length];
-
-    const left = createFrame(memory, frameW * 0.82, frameH);
-    left.position.set(-sideX, y, 0);
-    left.rotation.y = -Math.PI / 2;
-    framesGroup.add(left);
-
-    const right = createFrame(memory, frameW * 0.82, frameH);
-    right.position.set(sideX, y, 0);
-    right.rotation.y = Math.PI / 2;
-    framesGroup.add(right);
-  });
-
-  for (let col = 0; col < 5; col++) {
-    const hasCell = map.some(rowPattern => rowPattern[col] === "1");
-
-    if (!hasCell) continue;
-
-    const x = (col - 2) * cell;
-    const memory = memories[(memoryIndex + activeRows.length + col) % memories.length];
-
-    const top = createFrame(memory, frameW, frameH * 0.82);
-    top.position.set(x, topY, 0);
-    top.rotation.x = -Math.PI / 2;
-    framesGroup.add(top);
-  }
-}
-
-function createLetter(data, glbModel) {
+function createLetter(data, glbModel, index) {
   const letterGroup = new THREE.Group();
 
   letterGroup.name = data.key;
@@ -325,29 +239,27 @@ function createLetter(data, glbModel) {
   base.rotation.y = 0;
   base.rotation.z = 0;
 
-  base.position.z = 0;
-
   letterGroup.add(base);
 
-  createFramesForLetter(letterGroup, data.label);
+  const memory = memories[index % memories.length];
+  const frame = createFrame(memory);
+
+  frame.position.set(0, 4.2, 0.15);
+  frame.rotation.set(0, 0, 0);
+
+  letterGroup.add(frame);
 
   letterGroup.scale.setScalar(1.35);
 
   memorialGroup.add(letterGroup);
-
-  loadedLetters.push({
-    key: data.key,
-    label: data.label,
-    object: letterGroup
-  });
 }
 
 function loadLetters() {
-  letterFiles.forEach(data => {
+  letterFiles.forEach((data, index) => {
     loader.load(
       data.file,
       gltf => {
-        createLetter(data, gltf.scene);
+        createLetter(data, gltf.scene, index);
       },
       undefined,
       error => {
@@ -360,8 +272,8 @@ function loadLetters() {
 loadLetters();
 
 document.getElementById("fullWordButton").addEventListener("click", () => {
-  controls.target.set(0, 2.7, 0);
-  camera.position.set(0, 3.8, 24);
+  controls.target.set(0, 3, 0);
+  camera.position.set(0, 4.5, 28);
   controls.update();
 });
 
@@ -374,8 +286,8 @@ document.getElementById("zoomOut").addEventListener("click", () => {
 });
 
 document.getElementById("resetView").addEventListener("click", () => {
-  controls.target.set(0, 2.7, 0);
-  camera.position.set(0, 3.8, 24);
+  controls.target.set(0, 3, 0);
+  camera.position.set(0, 4.5, 28);
   controls.update();
 });
 

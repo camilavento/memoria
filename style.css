@@ -465,4 +465,6 @@ textarea{
   .letter-panel{
   display:none !important;
 }
+}.letter-panel{
+  display:none !important;
 }
