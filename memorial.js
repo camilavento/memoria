@@ -46,7 +46,7 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 3.8, 22);
+camera.position.set(0, 3.8, 24);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -61,9 +61,9 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.target.set(0, 2.6, 0);
+controls.target.set(0, 2.7, 0);
 controls.minDistance = 5;
-controls.maxDistance = 40;
+controls.maxDistance = 45;
 
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
@@ -109,18 +109,16 @@ scene.add(wall);
 const loader = new GLTFLoader();
 
 const letterFiles = [
-  { key: "M1", label: "M", file: "models/M1%20memoria.glb", x: -9.6 },
-  { key: "E", label: "E", file: "models/E%20memoria.glb", x: -6.4 },
-  { key: "M2", label: "M", file: "models/M2%20memoria.glb", x: -3.2 },
+  { key: "M1", label: "M", file: "models/M1%20memoria.glb", x: -18 },
+  { key: "E", label: "E", file: "models/E%20memoria.glb", x: -12 },
+  { key: "M2", label: "M", file: "models/M2%20memoria.glb", x: -6 },
   { key: "O", label: "O", file: "models/O%20memoria.glb", x: 0 },
-  { key: "R", label: "R", file: "models/R%20memoria.glb", x: 3.2 },
-  { key: "I", label: "I", file: "models/I%20memoria.glb", x: 6.4 },
-  { key: "A", label: "A", file: "models/A%20memoria.glb", x: 9.6 }
+  { key: "R", label: "R", file: "models/R%20memoria.glb", x: 6 },
+  { key: "I", label: "I", file: "models/I%20memoria.glb", x: 12 },
+  { key: "A", label: "A", file: "models/A%20memoria.glb", x: 18 }
 ];
 
 let loadedLetters = [];
-let selectedLetter = null;
-let isolatedMode = false;
 
 function makePhotoTexture(memory) {
   const canvas = document.createElement("canvas");
@@ -175,7 +173,7 @@ function createFrame(memory, width, height) {
   const group = new THREE.Group();
 
   const backing = new THREE.Mesh(
-    new THREE.BoxGeometry(width * 1.14, height * 1.14, 0.06),
+    new THREE.BoxGeometry(width * 1.12, height * 1.12, 0.05),
     new THREE.MeshStandardMaterial({
       color: 0x2b1d13,
       roughness: 0.7,
@@ -193,11 +191,10 @@ function createFrame(memory, width, height) {
     })
   );
 
-  photo.position.z = 0.04;
+  photo.position.z = 0.035;
 
   backing.userData.isFrame = true;
   backing.userData.memory = memory;
-
   photo.userData.isFrame = true;
   photo.userData.memory = memory;
 
@@ -242,8 +239,8 @@ function styleGLB(model) {
 
 function createFramesForLetter(letterGroup, label) {
   const map = letterMaps[label];
-
   const framesGroup = new THREE.Group();
+
   framesGroup.name = "frames";
   letterGroup.add(framesGroup);
 
@@ -251,9 +248,9 @@ function createFramesForLetter(letterGroup, label) {
   const frameW = 0.36;
   const frameH = 0.5;
 
-  const frontZ = 0.72;
-  const backZ = -0.72;
-  const sideX = 1.28;
+  const frontZ = 1.05;
+  const backZ = -1.05;
+  const sideX = 1.42;
   const topY = 2.05;
 
   let memoryIndex = 0;
@@ -324,9 +321,9 @@ function createLetter(data, glbModel) {
 
   styleGLB(base);
 
-  base.rotation.x = -Math.PI / 2;
-  base.rotation.z = 0;
+  base.rotation.x = 0;
   base.rotation.y = 0;
+  base.rotation.z = 0;
 
   base.position.z = 0;
 
@@ -349,13 +346,10 @@ function loadLetters() {
   letterFiles.forEach(data => {
     loader.load(
       data.file,
-
       gltf => {
         createLetter(data, gltf.scene);
       },
-
       undefined,
-
       error => {
         console.warn("No se pudo cargar:", data.file, error);
       }
@@ -365,89 +359,10 @@ function loadLetters() {
 
 loadLetters();
 
-const letterButtons = document.getElementById("letterButtons");
-
-letterFiles.forEach(data => {
-  const button = document.createElement("button");
-  button.textContent = data.label;
-
-  button.addEventListener("click", () => {
-    const letter = loadedLetters.find(item => item.key === data.key);
-
-    if (letter) {
-      selectLetter(letter);
-      focusObject(letter.object, 6);
-    }
-  });
-
-  letterButtons.appendChild(button);
-});
-
-function selectLetter(letter) {
-  selectedLetter = letter;
-
-  document.getElementById("selectedLetterTitle").textContent =
-    `Letra ${letter.label}`;
-
-  document.getElementById("selectedLetterText").textContent =
-    "Puedes aislarla para explorar sus frames en frente, laterales, parte trasera y parte superior.";
-}
-
-function focusObject(object, distance) {
-  const box = new THREE.Box3().setFromObject(object);
-  const center = new THREE.Vector3();
-
-  box.getCenter(center);
-
-  controls.target.copy(center);
-
-  camera.position.set(
-    center.x,
-    center.y + 2.2,
-    center.z + distance
-  );
-
-  controls.update();
-}
-
-document.getElementById("isolateLetter").addEventListener("click", () => {
-  if (!selectedLetter) return;
-
-  isolatedMode = true;
-
-  loadedLetters.forEach(letter => {
-    letter.object.visible = letter.key === selectedLetter.key;
-  });
-
-  focusObject(selectedLetter.object, 5);
-});
-
-document.getElementById("returnWord").addEventListener("click", () => {
-  isolatedMode = false;
-
-  loadedLetters.forEach(letter => {
-    letter.object.visible = true;
-  });
-
-  controls.target.set(0, 2.7, 0);
-  camera.position.set(0, 3.8, 22);
-  controls.update();
-
-  document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
-});
-
 document.getElementById("fullWordButton").addEventListener("click", () => {
-  isolatedMode = false;
-
-  loadedLetters.forEach(letter => {
-    letter.object.visible = true;
-  });
-
   controls.target.set(0, 2.7, 0);
-  camera.position.set(0, 3.8, 22);
+  camera.position.set(0, 3.8, 24);
   controls.update();
-
-  document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
 });
 
 document.getElementById("zoomIn").addEventListener("click", () => {
@@ -459,17 +374,9 @@ document.getElementById("zoomOut").addEventListener("click", () => {
 });
 
 document.getElementById("resetView").addEventListener("click", () => {
-  isolatedMode = false;
-
-  loadedLetters.forEach(letter => {
-    letter.object.visible = true;
-  });
-
   controls.target.set(0, 2.7, 0);
-  camera.position.set(0, 3.8, 22);
+  camera.position.set(0, 3.8, 24);
   controls.update();
-
-  document.getElementById("selectedLetterTitle").textContent = "MEMORIA";
 });
 
 const raycaster = new THREE.Raycaster();
@@ -478,18 +385,12 @@ const pointer = new THREE.Vector2();
 renderer.domElement.addEventListener("click", event => {
   const rect = renderer.domElement.getBoundingClientRect();
 
-  pointer.x =
-    ((event.clientX - rect.left) / rect.width) * 2 - 1;
-
-  pointer.y =
-    -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(pointer, camera);
 
-  const intersects = raycaster.intersectObjects(
-    memorialGroup.children,
-    true
-  );
+  const intersects = raycaster.intersectObjects(memorialGroup.children, true);
 
   if (!intersects.length) return;
 
@@ -497,19 +398,6 @@ renderer.domElement.addEventListener("click", event => {
 
   if (hit.userData.isFrame) {
     openModal(hit.userData.memory);
-    return;
-  }
-
-  let parent = hit;
-
-  while (parent.parent && parent.parent !== memorialGroup) {
-    parent = parent.parent;
-  }
-
-  const found = loadedLetters.find(item => item.object === parent);
-
-  if (found) {
-    selectLetter(found);
   }
 });
 
@@ -557,20 +445,13 @@ function animate() {
   requestAnimationFrame(animate);
 
   controls.update();
-
-  if (isolatedMode && selectedLetter) {
-    selectedLetter.object.rotation.y += 0.003;
-  }
-
   renderer.render(scene, camera);
 }
 
 animate();
 
 window.addEventListener("resize", () => {
-  camera.aspect =
-    container.clientWidth / container.clientHeight;
-
+  camera.aspect = container.clientWidth / container.clientHeight;
   camera.updateProjectionMatrix();
 
   renderer.setSize(
