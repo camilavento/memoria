@@ -14,11 +14,9 @@ const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
 
 /*
-  CORRECCIÓN CLAVE:
-  - Para que desde el frente se lea bien "MEMORIA"
-  - y no aparezcan letras extra detrás,
-  - NO usamos la cara trasera para poblar frames.
-  - Seguimos manteniendo volumen 3D con frente, lados y arriba.
+  Para que desde el frente se lea bien "MEMORIA"
+  y no aparezcan letras extra detrás,
+  NO usamos la cara trasera para poblar frames.
 */
 const INCLUIR_CARA_TRASERA = false;
 const INCLUIR_DIAGONALES = true;
@@ -47,54 +45,58 @@ const CUPOS_POR_CARA = {
 /*
   Posiciones de las letras.
   Aquí queda forzada la palabra exacta: M E M O R I A
+
+  IMPORTANTE:
+  - Se mantienen los nombres reales de tus archivos con "(3)"
+  - NO se rota el modelo extra, para que vuelvan a verse como en la primera imagen
 */
 const letterFiles = [
   {
     key: "M1",
     label: "M",
-    file: "models/M1 memoria.glb",
+    file: "models/M1 memoria(3).glb",
     x: -10.8,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "E",
     label: "E",
-    file: "models/E memoria.glb",
+    file: "models/E memoria(3).glb",
     x: -7.2,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "M2",
     label: "M",
-    file: "models/M2 memoria.glb",
+    file: "models/M2 memoria(3).glb",
     x: -3.6,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "O",
     label: "O",
-    file: "models/O memoria.glb",
+    file: "models/O memoria(3).glb",
     x: 0,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "R",
     label: "R",
-    file: "models/R memoria.glb",
+    file: "models/R memoria(3).glb",
     x: 3.6,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "I",
     label: "I",
-    file: "models/I memoria.glb",
+    file: "models/I memoria(3).glb",
     x: 7.2,
     rotation: { x: 0, y: 0, z: 0 }
   },
   {
     key: "A",
     label: "A",
-    file: "models/A memoria.glb",
+    file: "models/A memoria(3).glb",
     x: 10.8,
     rotation: { x: 0, y: 0, z: 0 }
   }
@@ -375,10 +377,6 @@ function createFrame(memory) {
     })
   );
 
-  /*
-    Doble cara visual para que al girar se siga viendo bien,
-    pero sin crear “otra palabra detrás” porque ya no usamos back slots.
-  */
   const frontPhoto = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO_FRAME, ALTO_FRAME),
     new THREE.MeshStandardMaterial({
