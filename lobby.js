@@ -1,3 +1,5 @@
+// lobby.js
+
 const canvas = document.getElementById("lobbyCanvas");
 const ctx = canvas.getContext("2d");
 
