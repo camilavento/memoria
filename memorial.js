@@ -14,9 +14,11 @@ const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
 
 /*
-  Para que desde el frente se lea bien "MEMORIA"
-  y no aparezcan letras extra detrás,
-  NO usamos la cara trasera para poblar frames.
+  CORRECCIÓN CLAVE:
+  - Para que desde el frente se lea bien "MEMORIA"
+  - y no aparezcan letras extra detrás,
+  - NO usamos la cara trasera para poblar frames.
+  - Seguimos manteniendo volumen 3D con frente, lados y arriba.
 */
 const INCLUIR_CARA_TRASERA = false;
 const INCLUIR_DIAGONALES = true;
@@ -46,59 +48,66 @@ const CUPOS_POR_CARA = {
   Posiciones de las letras.
   Aquí queda forzada la palabra exacta: M E M O R I A
 
-  IMPORTANTE:
-  - Se mantienen los nombres reales de tus archivos con "(3)"
-  - NO se rota el modelo extra, para que vuelvan a verse como en la primera imagen
+  CORRECCIÓN:
+  - Se agrega order para asegurar el orden MEMORIA.
+  - Se rota cada modelo -90° en X para que quede de frente y no acostado.
 */
 const letterFiles = [
   {
+    order: 0,
     key: "M1",
     label: "M",
-    file: "models/M1 memoria(3).glb",
+    file: "models/M1 memoria.glb",
     x: -10.8,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 1,
     key: "E",
     label: "E",
-    file: "models/E memoria(3).glb",
+    file: "models/E memoria.glb",
     x: -7.2,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 2,
     key: "M2",
     label: "M",
-    file: "models/M2 memoria(3).glb",
+    file: "models/M2 memoria.glb",
     x: -3.6,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 3,
     key: "O",
     label: "O",
-    file: "models/O memoria(3).glb",
+    file: "models/O memoria.glb",
     x: 0,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 4,
     key: "R",
     label: "R",
-    file: "models/R memoria(3).glb",
+    file: "models/R memoria.glb",
     x: 3.6,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 5,
     key: "I",
     label: "I",
-    file: "models/I memoria(3).glb",
+    file: "models/I memoria.glb",
     x: 7.2,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 6,
     key: "A",
     label: "A",
-    file: "models/A memoria(3).glb",
+    file: "models/A memoria.glb",
     x: 10.8,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   }
 ];
 
@@ -270,6 +279,8 @@ scene.add(wall);
 const loader = new GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "anonymous";
+
+const loadedLetters = [];
 
 /* =========================================================
    TEXTURAS DE FRAME
@@ -759,6 +770,13 @@ function createLetter(data, glbScene) {
   letterGroup.updateWorldMatrix(true, true);
   addFramesOn3DStructure(letterGroup, structure);
 
+  loadedLetters.push({
+    order: data.order,
+    group: letterGroup
+  });
+
+  arrangeWord();
+
   structure.visible = MOSTRAR_GUIA_LETRAS;
 
   fitMemorialView();
@@ -786,11 +804,36 @@ function createFallbackLetter(data) {
 
   addFramesOnFallbackVolume(letterGroup);
 
+  loadedLetters.push({
+    order: data.order,
+    group: letterGroup
+  });
+
+  arrangeWord();
+
   fitMemorialView();
 }
 
+function arrangeWord() {
+  const orderedLetters = [...loadedLetters].sort((a, b) => a.order - b.order);
+
+  orderedLetters.forEach((item, index) => {
+    const data = letterFiles.find(letter => letter.order === item.order);
+
+    if (!data) {
+      return;
+    }
+
+    item.group.position.x = data.x;
+    item.group.position.y = 0;
+    item.group.position.z = 0;
+  });
+}
+
 function loadLetters() {
-  letterFiles.forEach(data => {
+  const sortedLetters = [...letterFiles].sort((a, b) => a.order - b.order);
+
+  sortedLetters.forEach(data => {
     loader.load(
       encodeURI(data.file),
       gltf => {
