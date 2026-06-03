@@ -13,13 +13,6 @@ import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
 
-/*
-  CORRECCIÓN CLAVE:
-  - Para que desde el frente se lea bien "MEMORIA"
-  - y no aparezcan letras extra detrás,
-  - NO usamos la cara trasera para poblar frames.
-  - Seguimos manteniendo volumen 3D con frente, lados y arriba.
-*/
 const INCLUIR_CARA_TRASERA = false;
 const INCLUIR_DIAGONALES = true;
 
@@ -31,10 +24,6 @@ const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.40;
 const OFFSET_FRAME = 0.028;
 const MAX_FRAMES_POR_LETRA = 72;
 
-/*
-  Más peso al frente para que la palabra se lea correctamente,
-  pero manteniendo relieve 3D con lados y parte superior.
-*/
 const CUPOS_POR_CARA = {
   front: 34,
   left: 12,
@@ -44,14 +33,6 @@ const CUPOS_POR_CARA = {
   back: 0
 };
 
-/*
-  Posiciones de las letras.
-  Aquí queda forzada la palabra exacta: M E M O R I A
-
-  CORRECCIÓN:
-  - Se agrega order para asegurar el orden MEMORIA.
-  - Se rota cada modelo -90° en X para que quede de frente y no acostado.
-*/
 const letterFiles = [
   {
     order: 0,
@@ -347,10 +328,34 @@ function makeTextCardTexture(memory) {
   return texture;
 }
 
+function makeBlankCardTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 640;
+
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.strokeStyle = "#d9d9d9";
+  ctx.lineWidth = 10;
+  ctx.strokeRect(18, 18, 476, 604);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function getFrameTexture(memory) {
   const firstFile = memory.files && memory.files.length ? memory.files[0] : null;
 
-  if (firstFile && firstFile.type === "image" && firstFile.url) {
+  if (!firstFile) {
+    return makeBlankCardTexture();
+  }
+
+  if (firstFile.type === "image" && firstFile.url) {
     const texture = textureLoader.load(
       firstFile.url,
       loadedTexture => {
@@ -388,10 +393,12 @@ function createFrame(memory) {
     })
   );
 
+  const frameTexture = getFrameTexture(memory);
+
   const frontPhoto = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO_FRAME, ALTO_FRAME),
     new THREE.MeshStandardMaterial({
-      map: getFrameTexture(memory),
+      map: frameTexture,
       roughness: 0.62,
       metalness: 0.04,
       side: THREE.DoubleSide
@@ -401,7 +408,7 @@ function createFrame(memory) {
   const backPhoto = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO_FRAME, ALTO_FRAME),
     new THREE.MeshStandardMaterial({
-      map: getFrameTexture(memory),
+      map: frameTexture,
       roughness: 0.62,
       metalness: 0.04,
       side: THREE.DoubleSide
@@ -817,7 +824,7 @@ function createFallbackLetter(data) {
 function arrangeWord() {
   const orderedLetters = [...loadedLetters].sort((a, b) => a.order - b.order);
 
-  orderedLetters.forEach((item, index) => {
+  orderedLetters.forEach(item => {
     const data = letterFiles.find(letter => letter.order === item.order);
 
     if (!data) {
