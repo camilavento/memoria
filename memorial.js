@@ -31,6 +31,12 @@ const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.40;
 const OFFSET_FRAME = 0.028;
 const MAX_FRAMES_POR_LETRA = 72;
 
+const BACKGROUND_FILE = "models/memoriafondo.glb";
+const MOSTRAR_FONDO_GLB = true;
+const ESCALA_FONDO_OBJETIVO = 34;
+const POSICION_FONDO = new THREE.Vector3(0, -0.05, -7.8);
+const ROTACION_FONDO = new THREE.Euler(0, 0, 0);
+
 /*
   Más peso al frente para que la palabra se lea correctamente,
   pero manteniendo relieve 3D con lados y parte superior.
@@ -213,6 +219,7 @@ renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
+renderer.setClearColor(0x151515, 1);
 
 container.appendChild(renderer.domElement);
 
@@ -281,6 +288,7 @@ const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "anonymous";
 
 const loadedLetters = [];
+let backgroundModel = null;
 
 /* =========================================================
    TEXTURAS DE FRAME
@@ -500,6 +508,96 @@ function prepareGLBLetter(model, rotationConfig = { x: 0, y: 0, z: 0 }) {
   wrapper.position.y -= finalBox.min.y;
 
   return wrapper;
+}
+
+/* =========================================================
+   FONDO GLB CON TEXTURAS
+   ========================================================= */
+
+function cloneBackgroundMaterial(material) {
+  const cloned = material.clone();
+
+  if (cloned.map) {
+    cloned.map.colorSpace = THREE.SRGBColorSpace;
+    cloned.map.needsUpdate = true;
+  }
+
+  if (cloned.emissiveMap) {
+    cloned.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+    cloned.emissiveMap.needsUpdate = true;
+  }
+
+  if ("roughness" in cloned) {
+    cloned.roughness = Math.max(cloned.roughness ?? 0.65, 0.65);
+  }
+
+  if ("metalness" in cloned) {
+    cloned.metalness = cloned.metalness ?? 0.04;
+  }
+
+  return cloned;
+}
+
+function styleBackgroundModel(model) {
+  model.traverse(child => {
+    if (!child.isMesh) {
+      return;
+    }
+
+    child.castShadow = true;
+    child.receiveShadow = true;
+
+    if (Array.isArray(child.material)) {
+      child.material = child.material.map(material => cloneBackgroundMaterial(material));
+    } else if (child.material) {
+      child.material = cloneBackgroundMaterial(child.material);
+    }
+  });
+}
+
+function prepareBackgroundModel(model) {
+  styleBackgroundModel(model);
+
+  const wrapper = new THREE.Group();
+  wrapper.name = "memoriafondo";
+  wrapper.add(model);
+
+  centerObject(wrapper);
+
+  const current = getObjectBox(wrapper);
+  const maxSize = Math.max(current.size.x, current.size.y, current.size.z, 0.01);
+  const scale = ESCALA_FONDO_OBJETIVO / maxSize;
+
+  wrapper.scale.setScalar(scale);
+
+  const finalBox = new THREE.Box3().setFromObject(wrapper);
+  wrapper.position.y -= finalBox.min.y;
+
+  wrapper.position.add(POSICION_FONDO);
+  wrapper.rotation.copy(ROTACION_FONDO);
+
+  return wrapper;
+}
+
+function loadBackgroundModel() {
+  if (!MOSTRAR_FONDO_GLB) {
+    return;
+  }
+
+  loader.load(
+    encodeURI(BACKGROUND_FILE),
+    gltf => {
+      backgroundModel = prepareBackgroundModel(gltf.scene);
+      scene.add(backgroundModel);
+
+      floor.visible = false;
+      wall.visible = false;
+    },
+    undefined,
+    error => {
+      console.warn("No se pudo cargar el fondo 3D:", BACKGROUND_FILE, error);
+    }
+  );
 }
 
 /* =========================================================
@@ -848,6 +946,7 @@ function loadLetters() {
   });
 }
 
+loadBackgroundModel();
 loadLetters();
 
 /* =========================================================
