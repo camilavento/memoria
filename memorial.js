@@ -13,6 +13,13 @@ import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
 
+/*
+  CORRECCIÓN CLAVE:
+  - Para que desde el frente se lea bien "MEMORIA"
+  - y no aparezcan letras extra detrás,
+  - NO usamos la cara trasera para poblar frames.
+  - Seguimos manteniendo volumen 3D con frente, lados y arriba.
+*/
 const INCLUIR_CARA_TRASERA = false;
 const INCLUIR_DIAGONALES = true;
 
@@ -24,6 +31,10 @@ const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.40;
 const OFFSET_FRAME = 0.028;
 const MAX_FRAMES_POR_LETRA = 72;
 
+/*
+  Más peso al frente para que la palabra se lea correctamente,
+  pero manteniendo relieve 3D con lados y parte superior.
+*/
 const CUPOS_POR_CARA = {
   front: 34,
   left: 12,
@@ -33,59 +44,70 @@ const CUPOS_POR_CARA = {
   back: 0
 };
 
-const BACKGROUND_FILE = "models/memoriafondo (1).glb";
-const ESCALA_FONDO_OBJETIVO = 36;
-const POSICION_Z_FONDO = -9.5;
+/*
+  Posiciones de las letras.
+  Aquí queda forzada la palabra exacta: M E M O R I A
 
+  CORRECCIÓN:
+  - Se agrega order para asegurar el orden MEMORIA.
+  - Se rota cada modelo -90° en X para que quede de frente y no acostado.
+*/
 const letterFiles = [
   {
+    order: 0,
     key: "M1",
     label: "M",
     file: "models/M1 memoria.glb",
     x: -10.8,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 1,
     key: "E",
     label: "E",
     file: "models/E memoria.glb",
     x: -7.2,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 2,
     key: "M2",
     label: "M",
     file: "models/M2 memoria.glb",
     x: -3.6,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 3,
     key: "O",
     label: "O",
     file: "models/O memoria.glb",
     x: 0,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 4,
     key: "R",
     label: "R",
     file: "models/R memoria.glb",
     x: 3.6,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 5,
     key: "I",
     label: "I",
     file: "models/I memoria.glb",
     x: 7.2,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   },
   {
+    order: 6,
     key: "A",
     label: "A",
     file: "models/A memoria.glb",
     x: 10.8,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: { x: -Math.PI / 2, y: 0, z: 0 }
   }
 ];
 
@@ -172,7 +194,6 @@ const memories = getMemories();
 const container = document.getElementById("threeContainer");
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x2c1d12, 28, 58);
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -192,8 +213,6 @@ renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setClearColor(0x2c1d12, 1);
 
 container.appendChild(renderer.domElement);
 
@@ -208,37 +227,24 @@ controls.maxPolarAngle = Math.PI / 2.03;
 const memorialGroup = new THREE.Group();
 scene.add(memorialGroup);
 
-const pulsingLights = [];
-
 /* =========================================================
    ILUMINACIÓN Y ESCENARIO
    ========================================================= */
 
-scene.add(new THREE.AmbientLight(0xffefd9, 1.35));
+scene.add(new THREE.AmbientLight(0xfff0da, 1.28));
 
-const keyLight = new THREE.DirectionalLight(0xffd7a0, 3.4);
+const keyLight = new THREE.DirectionalLight(0xffd7a0, 3.2);
 keyLight.position.set(-8, 10, 12);
 keyLight.castShadow = true;
-keyLight.shadow.mapSize.width = 2048;
-keyLight.shadow.mapSize.height = 2048;
-keyLight.shadow.camera.near = 0.5;
-keyLight.shadow.camera.far = 80;
 scene.add(keyLight);
 
-const warmLight = new THREE.PointLight(0xffc27a, 2.5, 28, 2);
+const warmLight = new THREE.PointLight(0xffc27a, 2.2, 26);
 warmLight.position.set(-7, 4, 8);
 scene.add(warmLight);
 
-const purpleLight = new THREE.PointLight(0x6b5fae, 1.4, 24, 2);
+const purpleLight = new THREE.PointLight(0x6b5fae, 1.15, 22);
 purpleLight.position.set(8, 5, -4);
 scene.add(purpleLight);
-
-const topGlow = new THREE.SpotLight(0xffd5a8, 2.2, 60, Math.PI / 5.5, 0.55, 1.2);
-topGlow.position.set(0, 16, 12);
-topGlow.target.position.set(0, 2.6, 0);
-topGlow.castShadow = false;
-scene.add(topGlow);
-scene.add(topGlow.target);
 
 const floor = new THREE.Mesh(
   new THREE.PlaneGeometry(90, 42),
@@ -273,6 +279,8 @@ scene.add(wall);
 const loader = new GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
 textureLoader.crossOrigin = "anonymous";
+
+const loadedLetters = [];
 
 /* =========================================================
    TEXTURAS DE FRAME
@@ -376,35 +384,27 @@ function createFrame(memory) {
     new THREE.MeshStandardMaterial({
       color: 0x2b1d13,
       roughness: 0.72,
-      metalness: 0.08,
-      emissive: 0x241409,
-      emissiveIntensity: 0.18
+      metalness: 0.08
     })
   );
-
-  const frameTexture = getFrameTexture(memory);
 
   const frontPhoto = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO_FRAME, ALTO_FRAME),
     new THREE.MeshStandardMaterial({
-      map: frameTexture,
-      roughness: 0.55,
-      metalness: 0.03,
-      side: THREE.DoubleSide,
-      emissive: 0x1b120b,
-      emissiveIntensity: 0.06
+      map: getFrameTexture(memory),
+      roughness: 0.62,
+      metalness: 0.04,
+      side: THREE.DoubleSide
     })
   );
 
   const backPhoto = new THREE.Mesh(
     new THREE.PlaneGeometry(ANCHO_FRAME, ALTO_FRAME),
     new THREE.MeshStandardMaterial({
-      map: frameTexture,
-      roughness: 0.55,
-      metalness: 0.03,
-      side: THREE.DoubleSide,
-      emissive: 0x1b120b,
-      emissiveIntensity: 0.06
+      map: getFrameTexture(memory),
+      roughness: 0.62,
+      metalness: 0.04,
+      side: THREE.DoubleSide
     })
   );
 
@@ -460,28 +460,6 @@ function styleLetterStructure(model) {
   });
 }
 
-function styleBackgroundStructure(model) {
-  model.traverse(child => {
-    if (!child.isMesh) return;
-
-    child.castShadow = true;
-    child.receiveShadow = true;
-
-    if (Array.isArray(child.material)) {
-      child.material = child.material.map(material => {
-        const cloned = material.clone();
-        if ("roughness" in cloned) cloned.roughness = 0.84;
-        if ("metalness" in cloned) cloned.metalness = 0.04;
-        return cloned;
-      });
-    } else if (child.material) {
-      child.material = child.material.clone();
-      if ("roughness" in child.material) child.material.roughness = 0.84;
-      if ("metalness" in child.material) child.material.metalness = 0.04;
-    }
-  });
-}
-
 function getObjectBox(object) {
   const box = new THREE.Box3().setFromObject(object);
   const size = new THREE.Vector3();
@@ -522,91 +500,6 @@ function prepareGLBLetter(model, rotationConfig = { x: 0, y: 0, z: 0 }) {
   wrapper.position.y -= finalBox.min.y;
 
   return wrapper;
-}
-
-function prepareBackgroundModel(model) {
-  styleBackgroundStructure(model);
-
-  const wrapper = new THREE.Group();
-  wrapper.add(model);
-
-  centerObject(wrapper);
-
-  const current = getObjectBox(wrapper);
-
-  const scale =
-    ESCALA_FONDO_OBJETIVO / Math.max(current.size.x, current.size.z, 0.01);
-
-  wrapper.scale.setScalar(scale);
-
-  const finalBox = new THREE.Box3().setFromObject(wrapper);
-  wrapper.position.y -= finalBox.min.y;
-  wrapper.position.y -= 0.05;
-  wrapper.position.z = POSICION_Z_FONDO;
-
-  return wrapper;
-}
-
-/* =========================================================
-   FONDO GLB
-   ========================================================= */
-
-function loadBackgroundModel() {
-  loader.load(
-    encodeURI(BACKGROUND_FILE),
-    gltf => {
-      const backgroundModel = prepareBackgroundModel(gltf.scene);
-      wall.visible = false;
-      scene.add(backgroundModel);
-    },
-    undefined,
-    error => {
-      console.warn("No se pudo cargar el fondo:", BACKGROUND_FILE, error);
-    }
-  );
-}
-
-/* =========================================================
-   EFECTOS DE LUZ POR LETRA
-   ========================================================= */
-
-function addLetterLightEffects(letterGroup) {
-  const warmGlow = new THREE.PointLight(0xffd596, 1.3, 6.5, 2);
-  warmGlow.position.set(0, 2.8, 2.7);
-
-  const softPurpleGlow = new THREE.PointLight(0x8d72ff, 0.7, 5.8, 2);
-  softPurpleGlow.position.set(0, 2.1, 1.8);
-
-  const rimGlow = new THREE.PointLight(0xffa76f, 0.55, 4.8, 2);
-  rimGlow.position.set(0, 3.0, -1.3);
-
-  letterGroup.add(warmGlow);
-  letterGroup.add(softPurpleGlow);
-  letterGroup.add(rimGlow);
-
-  pulsingLights.push({
-    light: warmGlow,
-    base: 1.3,
-    amplitude: 0.32,
-    speed: 1.35,
-    phase: Math.random() * Math.PI * 2
-  });
-
-  pulsingLights.push({
-    light: softPurpleGlow,
-    base: 0.7,
-    amplitude: 0.18,
-    speed: 1.7,
-    phase: Math.random() * Math.PI * 2
-  });
-
-  pulsingLights.push({
-    light: rimGlow,
-    base: 0.55,
-    amplitude: 0.14,
-    speed: 1.15,
-    phase: Math.random() * Math.PI * 2
-  });
 }
 
 /* =========================================================
@@ -876,7 +769,13 @@ function createLetter(data, glbScene) {
 
   letterGroup.updateWorldMatrix(true, true);
   addFramesOn3DStructure(letterGroup, structure);
-  addLetterLightEffects(letterGroup);
+
+  loadedLetters.push({
+    order: data.order,
+    group: letterGroup
+  });
+
+  arrangeWord();
 
   structure.visible = MOSTRAR_GUIA_LETRAS;
 
@@ -904,13 +803,37 @@ function createFallbackLetter(data) {
   memorialGroup.add(letterGroup);
 
   addFramesOnFallbackVolume(letterGroup);
-  addLetterLightEffects(letterGroup);
+
+  loadedLetters.push({
+    order: data.order,
+    group: letterGroup
+  });
+
+  arrangeWord();
 
   fitMemorialView();
 }
 
+function arrangeWord() {
+  const orderedLetters = [...loadedLetters].sort((a, b) => a.order - b.order);
+
+  orderedLetters.forEach((item, index) => {
+    const data = letterFiles.find(letter => letter.order === item.order);
+
+    if (!data) {
+      return;
+    }
+
+    item.group.position.x = data.x;
+    item.group.position.y = 0;
+    item.group.position.z = 0;
+  });
+}
+
 function loadLetters() {
-  letterFiles.forEach(data => {
+  const sortedLetters = [...letterFiles].sort((a, b) => a.order - b.order);
+
+  sortedLetters.forEach(data => {
     loader.load(
       encodeURI(data.file),
       gltf => {
@@ -925,7 +848,6 @@ function loadLetters() {
   });
 }
 
-loadBackgroundModel();
 loadLetters();
 
 /* =========================================================
@@ -1051,14 +973,6 @@ document.getElementById("memoryModal").addEventListener("click", event => {
 
 function animate() {
   requestAnimationFrame(animate);
-
-  const time = performance.now() * 0.001;
-
-  pulsingLights.forEach(item => {
-    item.light.intensity =
-      item.base + Math.sin(time * item.speed + item.phase) * item.amplitude;
-  });
-
   controls.update();
   renderer.render(scene, camera);
 }
