@@ -1,11 +1,5 @@
 // memorial.js
 // REEMPLAZA COMPLETO TU ARCHIVO memorial.js POR ESTE
-// AJUSTE:
-// - LAS LETRAS SE MANTIENEN IGUAL
-// - EL FONDO CUBRE TODO EL SUELO PARA QUE NO SE VEA NEGRO
-// - SE QUITAN LAS SOMBRAS ARTIFICIALES PARA QUE NO SE VEA SOLO LA SOMBRA DE LA "O"
-// - LA PAGINA INICIA MOSTRANDO LA PALABRA MEMORIA COMPLETA
-// - LA CAMARA PUEDE GIRAR LIBREMENTE POR TODA LA HABITACION
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -34,15 +28,17 @@ const USAR_ESCENARIO_REFERENCIA = true;
 const BACKGROUND_FILE = "models/memoriafondo.glb";
 const MOSTRAR_FONDO_GLB = false;
 
-/*
-  Se desactivan las sombras artificiales para evitar que solo una letra
-  tenga sombra visible. Las letras quedan limpias y consistentes.
-*/
-const ACTIVAR_SOMBRAS_SUAVES_FRAMES = false;
-
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
 const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 6.4, 47);
 const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.75, -5.5);
+
+const COLOR_FONDO_GENERAL = 0x5b5f63;
+const COLOR_MURO = 0x55595d;
+const COLOR_MURO_LATERAL = 0x666a6e;
+const COLOR_SUELO = 0xb4b8bc;
+const COLOR_TECHO = 0x4b4f53;
+
+const ACTIVAR_SOMBRAS_SUAVES_FRAMES = false;
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -199,8 +195,8 @@ const memories = getMemories();
 const container = document.getElementById("threeContainer");
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xb4b8bc);
-scene.fog = new THREE.Fog(0x9fa5aa, 55, 170);
+scene.background = new THREE.Color(COLOR_FONDO_GENERAL);
+scene.fog = new THREE.Fog(COLOR_FONDO_GENERAL, 85, 240);
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -219,10 +215,9 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false;
 renderer.localClippingEnabled = false;
-renderer.setClearColor(0xb4b8bc, 1);
+renderer.setClearColor(COLOR_FONDO_GENERAL, 1);
 
 container.appendChild(renderer.domElement);
 
@@ -236,11 +231,12 @@ controls.enablePan = true;
 controls.screenSpacePanning = false;
 
 controls.minDistance = 4;
-controls.maxDistance = 120;
+controls.maxDistance = 140;
 
 /*
   Camara libre:
-  permite girar por toda la habitacion y ver las letras desde todos los angulos.
+  permite girar alrededor de toda la palabra y moverse por el espacio
+  sin quedar bloqueada visualmente por las paredes.
 */
 controls.minAzimuthAngle = -Infinity;
 controls.maxAzimuthAngle = Infinity;
@@ -249,7 +245,7 @@ controls.maxPolarAngle = Math.PI - 0.08;
 
 controls.rotateSpeed = 0.72;
 controls.zoomSpeed = 0.85;
-controls.panSpeed = 0.6;
+controls.panSpeed = 0.65;
 
 const memorialGroup = new THREE.Group();
 memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
@@ -260,20 +256,11 @@ scene.add(memorialGroup);
    ILUMINACION
    ========================================================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.96));
+scene.add(new THREE.AmbientLight(0xffffff, 1.08));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.65);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
 keyLight.position.set(-12, 15, 22);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.width = 4096;
-keyLight.shadow.mapSize.height = 4096;
-keyLight.shadow.camera.near = 0.5;
-keyLight.shadow.camera.far = 120;
-keyLight.shadow.camera.left = -55;
-keyLight.shadow.camera.right = 55;
-keyLight.shadow.camera.top = 42;
-keyLight.shadow.camera.bottom = -25;
-keyLight.shadow.bias = -0.00008;
+keyLight.castShadow = false;
 scene.add(keyLight);
 
 const frontLight = new THREE.PointLight(0xffffff, 1.85, 80);
@@ -299,19 +286,28 @@ scene.add(floorBounceLight);
 let backgroundModel = null;
 let referenceRoom = null;
 
-function createStoneMaterial(color, roughness = 0.88, metalness = 0.04) {
+function createMaterial(color, roughness = 0.88, metalness = 0.04, side = THREE.FrontSide) {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness,
+    side
+  });
+}
+
+function createLineMaterial(color = 0x45494d) {
+  return new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.96,
+    metalness: 0.02,
     side: THREE.DoubleSide
   });
 }
 
-function createPanelLine(width, height, depth, color = 0x505357) {
+function createPanelLine(width, height, depth, color = 0x45494d) {
   return new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
-    createStoneMaterial(color, 0.96, 0.02)
+    createLineMaterial(color)
   );
 }
 
@@ -320,31 +316,38 @@ function createReferenceRoom() {
   room.name = "reference-room";
 
   /*
-    Fondo extendido:
-    - suelo mucho mas largo hacia la camara
-    - ancho suficiente para toda la palabra
-    - paredes laterales extendidas
-    - sin zonas negras visibles
+    Este escenario usa paredes como planos de una sola cara.
+    Desde dentro se ven normales.
+    Desde fuera no bloquean la vista, así se puede girar alrededor
+    de las letras sin que las paredes tapen los laterales.
   */
-  const roomWidth = 60;
+  const roomWidth = 68;
   const roomHeight = 12;
-  const roomDepth = 56;
+  const roomDepth = 62;
   const roomCenterZ = -10;
-  const floorDepth = 170;
+
+  const floorDepth = 180;
   const floorCenterZ = roomCenterZ + 34;
 
+  const backZ = roomCenterZ - roomDepth / 2;
+  const frontZ = roomCenterZ + roomDepth / 2;
+
   const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(roomWidth, 0.5, floorDepth),
-    new THREE.MeshStandardMaterial({
-      color: 0xb4b8bc,
-      roughness: 0.18,
-      metalness: 0.05,
-      side: THREE.DoubleSide
-    })
+    new THREE.PlaneGeometry(roomWidth, floorDepth),
+    createMaterial(COLOR_SUELO, 0.18, 0.05, THREE.FrontSide)
   );
-  floor.position.set(0, -0.25, floorCenterZ);
-  floor.receiveShadow = true;
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0, floorCenterZ);
+  floor.receiveShadow = false;
   room.add(floor);
+
+  const floorBase = new THREE.Mesh(
+    new THREE.BoxGeometry(roomWidth, 0.42, floorDepth),
+    createMaterial(COLOR_SUELO, 0.2, 0.04, THREE.DoubleSide)
+  );
+  floorBase.position.set(0, -0.24, floorCenterZ);
+  floorBase.receiveShadow = false;
+  room.add(floorBase);
 
   const floorReflect = new THREE.Mesh(
     new THREE.PlaneGeometry(roomWidth - 2.4, floorDepth - 2.4),
@@ -353,77 +356,73 @@ function createReferenceRoom() {
       roughness: 0.14,
       metalness: 0.04,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.18,
       depthWrite: false,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     })
   );
   floorReflect.rotation.x = -Math.PI / 2;
   floorReflect.position.set(0, 0.025, floorCenterZ);
-  floorReflect.receiveShadow = true;
   room.add(floorReflect);
 
   const backWall = new THREE.Mesh(
-    new THREE.BoxGeometry(roomWidth, roomHeight, 0.9),
-    createStoneMaterial(0x64676b, 0.92, 0.02)
+    new THREE.PlaneGeometry(roomWidth, roomHeight),
+    createMaterial(COLOR_MURO, 0.92, 0.02, THREE.FrontSide)
   );
-  backWall.position.set(0, roomHeight / 2, roomCenterZ - roomDepth / 2);
-  backWall.receiveShadow = true;
+  backWall.position.set(0, roomHeight / 2, backZ);
   room.add(backWall);
 
   const leftWall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, roomHeight, floorDepth),
-    createStoneMaterial(0x6c7074, 0.92, 0.02)
+    new THREE.PlaneGeometry(floorDepth, roomHeight),
+    createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
   );
+  leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-roomWidth / 2, roomHeight / 2, floorCenterZ);
-  leftWall.receiveShadow = true;
   room.add(leftWall);
 
   const rightWall = new THREE.Mesh(
-    new THREE.BoxGeometry(0.9, roomHeight, floorDepth),
-    createStoneMaterial(0x6c7074, 0.92, 0.02)
+    new THREE.PlaneGeometry(floorDepth, roomHeight),
+    createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
   );
+  rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(roomWidth / 2, roomHeight / 2, floorCenterZ);
-  rightWall.receiveShadow = true;
   room.add(rightWall);
 
   const ceiling = new THREE.Mesh(
-    new THREE.BoxGeometry(roomWidth, 0.75, roomDepth + 16),
-    createStoneMaterial(0x73777b, 0.95, 0.02)
+    new THREE.PlaneGeometry(roomWidth, roomDepth + 18),
+    createMaterial(COLOR_TECHO, 0.95, 0.02, THREE.FrontSide)
   );
-  ceiling.position.set(0, roomHeight + 0.38, roomCenterZ - 1.5);
-  ceiling.receiveShadow = true;
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set(0, roomHeight, roomCenterZ - 1.5);
   room.add(ceiling);
 
   const frontLintel = new THREE.Mesh(
     new THREE.BoxGeometry(roomWidth + 2, 1.95, 1.45),
-    createStoneMaterial(0x7e8387, 0.95, 0.02)
+    createMaterial(0x6d7276, 0.95, 0.02, THREE.DoubleSide)
   );
-  frontLintel.position.set(0, roomHeight + 0.32, roomCenterZ + roomDepth / 2 + 5.2);
-  frontLintel.receiveShadow = true;
+  frontLintel.position.set(0, roomHeight + 0.32, frontZ + 5.2);
   room.add(frontLintel);
 
   const frontTopSlab = new THREE.Mesh(
     new THREE.BoxGeometry(roomWidth + 3.2, 1.2, 7.5),
-    createStoneMaterial(0x7b8084, 0.95, 0.02)
+    createMaterial(0x6a6f73, 0.95, 0.02, THREE.DoubleSide)
   );
-  frontTopSlab.position.set(0, roomHeight + 1.42, roomCenterZ + roomDepth / 2 + 2.7);
-  frontTopSlab.receiveShadow = true;
+  frontTopSlab.position.set(0, roomHeight + 1.42, frontZ + 2.7);
   room.add(frontTopSlab);
 
-  const verticalBackLines = [-20, -10, 0, 10, 20];
+  const verticalBackLines = [-24, -12, 0, 12, 24];
 
   verticalBackLines.forEach(x => {
-    const line = createPanelLine(0.08, roomHeight - 0.9, 0.08, 0x4f5357);
-    line.position.set(x, roomHeight / 2 + 0.05, roomCenterZ - roomDepth / 2 + 0.48);
+    const line = createPanelLine(0.08, roomHeight - 0.9, 0.08, 0x45494d);
+    line.position.set(x, roomHeight / 2 + 0.05, backZ + 0.03);
     room.add(line);
   });
 
   const horizontalBackLines = [3.9, 7.6];
 
   horizontalBackLines.forEach(y => {
-    const line = createPanelLine(roomWidth - 1.4, 0.08, 0.08, 0x4f5357);
-    line.position.set(0, y, roomCenterZ - roomDepth / 2 + 0.5);
+    const line = createPanelLine(roomWidth - 1.4, 0.08, 0.08, 0x45494d);
+    line.position.set(0, y, backZ + 0.04);
     room.add(line);
   });
 
@@ -433,10 +432,9 @@ function createReferenceRoom() {
   ribPositions.forEach(x => {
     const rib = new THREE.Mesh(
       new THREE.BoxGeometry(0.22, roomHeight - 0.7, 0.34),
-      createStoneMaterial(0x55595d, 0.96, 0.02)
+      createMaterial(0x484c50, 0.96, 0.02, THREE.DoubleSide)
     );
-    rib.position.set(x, roomHeight / 2 + 0.18, roomCenterZ - roomDepth / 2 + 1.3);
-    rib.receiveShadow = true;
+    rib.position.set(x, roomHeight / 2 + 0.18, backZ + 1.3);
     room.add(rib);
   });
 
@@ -445,17 +443,19 @@ function createReferenceRoom() {
     roomCenterZ - 12,
     roomCenterZ,
     roomCenterZ + 12,
-    roomCenterZ + 24
+    roomCenterZ + 24,
+    roomCenterZ + 38,
+    roomCenterZ + 52
   ];
 
   sidePanelZ.forEach(z => {
-    const leftLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x55595d);
-    leftLine.position.set(-roomWidth / 2 + 0.5, roomHeight / 2, z);
+    const leftLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x4b4f53);
+    leftLine.position.set(-roomWidth / 2 + 0.08, roomHeight / 2, z);
     leftLine.rotation.y = Math.PI / 2;
     room.add(leftLine);
 
-    const rightLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x55595d);
-    rightLine.position.set(roomWidth / 2 - 0.5, roomHeight / 2, z);
+    const rightLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x4b4f53);
+    rightLine.position.set(roomWidth / 2 - 0.08, roomHeight / 2, z);
     rightLine.rotation.y = Math.PI / 2;
     room.add(rightLine);
   });
@@ -465,7 +465,7 @@ function createReferenceRoom() {
   room.add(topOpeningLight);
 
   const backLight = new THREE.PointLight(0xd4dbe2, 0.7, 44);
-  backLight.position.set(0, 6.0, roomCenterZ - roomDepth / 2 + 3.2);
+  backLight.position.set(0, 6.0, backZ + 3.2);
   room.add(backLight);
 
   room.userData.roomWidth = roomWidth;
@@ -474,6 +474,8 @@ function createReferenceRoom() {
   room.userData.floorDepth = floorDepth;
   room.userData.roomCenterZ = roomCenterZ;
   room.userData.floorCenterZ = floorCenterZ;
+  room.userData.backZ = backZ;
+  room.userData.frontZ = frontZ;
 
   return room;
 }
@@ -492,14 +494,14 @@ function posicionarMemorialDentroDeSalaReferencia() {
   memorialGroup.rotation.set(0, 0, 0);
 
   /*
-    Vista inicial mas alejada:
-    la pagina parte mostrando la palabra MEMORIA completa.
+    Vista inicial:
+    parte mostrando la palabra MEMORIA completa.
   */
   camera.position.set(0, 6.4, roomCenterZ + roomDepth / 2 + 29);
   controls.target.set(0, 2.75, roomCenterZ + 4.3);
 
   controls.minDistance = 4;
-  controls.maxDistance = 120;
+  controls.maxDistance = 140;
 
   controls.minAzimuthAngle = -Infinity;
   controls.maxAzimuthAngle = Infinity;
@@ -750,10 +752,6 @@ function createFrame(memory) {
   backPhoto.position.z = -(PROFUNDIDAD_FRAME / 2 + 0.004);
   backPhoto.rotation.y = Math.PI;
 
-  /*
-    Sin sombras reales de frames para evitar que solo algunas letras
-    proyecten sombra. Queda todo consistente.
-  */
   backing.castShadow = false;
   backing.receiveShadow = true;
 
