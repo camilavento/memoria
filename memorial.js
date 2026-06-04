@@ -1,11 +1,7 @@
 // memorial.js
-// Reemplaza TODO tu archivo memorial.js por este código completo.
-// Solo aparecen frames reales guardados en localStorage.
-// La palabra MEMORIA se forma progresivamente conforme se agregan aportes.
-// Corrección:
-// - Escenario limpio con planos interiores.
-// - Sin vigas/bloques que se crucen al girar.
-// - Cámara limitada para que no se pueda alejar tanto ni ver la sala como maqueta.
+// Memorial 3D conectado a Supabase.
+// Ya no depende de localStorage para mostrar los frames.
+// Las memorias se cargan desde la tabla public.memories de Supabase.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -111,8 +107,10 @@ const letterFiles = [
 ];
 
 /* =========================
-   MEMORIAS REALES
+   MEMORIAS DESDE SUPABASE
 ========================= */
+
+let memories = [];
 
 function isDemoMemory(memory) {
   const demoIds = ["p001", "p002", "p003", "p004"];
@@ -127,28 +125,42 @@ function isDemoMemory(memory) {
   return demoIds.includes(memory.personId) || demoNames.includes(memory.name);
 }
 
-function getMemories() {
-  const saved = localStorage.getItem("memories");
-
-  if (!saved) {
-    return [];
+async function loadMemoriesFromSupabase() {
+  if (!window.supabaseClient) {
+    console.error("No existe window.supabaseClient. Revisa supabaseClient.js y el orden de scripts en memorial.html.");
+    memories = [];
+    return;
   }
 
   try {
-    const parsed = JSON.parse(saved);
+    const { data, error } = await window.supabaseClient
+      .from("memories")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (!Array.isArray(parsed)) {
-      return [];
+    if (error) {
+      throw error;
     }
 
-    return parsed.filter(memory => !isDemoMemory(memory));
+    memories = Array.isArray(data)
+      ? data
+          .map(row => ({
+            personId: row.person_id,
+            name: row.name,
+            message: row.message,
+            type: row.type,
+            relation: row.relation,
+            files: Array.isArray(row.files) ? row.files : [],
+            createdAt: row.created_at,
+            dedicatedTo: row.dedicated_to || {}
+          }))
+          .filter(memory => !isDemoMemory(memory))
+      : [];
   } catch (error) {
-    console.warn("No se pudieron leer las memorias guardadas:", error);
-    return [];
+    console.error("No se pudieron cargar las memorias desde Supabase:", error);
+    memories = [];
   }
 }
-
-const memories = getMemories();
 
 /* =========================
    ESCENA
@@ -629,7 +641,9 @@ function getFrameTexture(memory) {
         loadedTexture.needsUpdate = true;
       },
       undefined,
-      () => {}
+      () => {
+        console.warn("No se pudo cargar la textura del frame:", firstFile.url);
+      }
     );
 
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -1276,12 +1290,32 @@ function openModal(memory) {
       audio.controls = true;
       modalMedia.appendChild(audio);
     }
+
+    if (preview.type === "document") {
+      const link = document.createElement("a");
+      link.href = preview.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = preview.name || "Abrir documento";
+      modalMedia.appendChild(link);
+    }
   }
 
   if (memory.files && memory.files.length) {
     memory.files.forEach(file => {
       const li = document.createElement("li");
-      li.textContent = file.name;
+
+      if (file.url) {
+        const link = document.createElement("a");
+        link.href = file.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = file.name || "Archivo";
+        li.appendChild(link);
+      } else {
+        li.textContent = file.name || "Archivo";
+      }
+
       modalFiles.appendChild(li);
     });
   }
@@ -1309,8 +1343,13 @@ if (memoryModal) {
    INICIO
 ========================= */
 
-loadBackgroundModel();
-loadLetters();
+async function startMemorial() {
+  await loadMemoriesFromSupabase();
+  loadBackgroundModel();
+  loadLetters();
+}
+
+startMemorial();
 
 function animate() {
   requestAnimationFrame(animate);
