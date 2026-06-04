@@ -38,10 +38,10 @@ const COLOR_MURO_LATERAL = 0x666a6e;
 const COLOR_SUELO = 0xb4b8bc;
 const COLOR_TECHO = 0x4b4f53;
 
-const ACTIVAR_SOMBRAS_SUAVES_FRAMES = false;
-
 const ALTURA_MINIMA_CAMARA = 1.05;
 const ALTURA_MINIMA_TARGET = 1.2;
+
+const ACTIVAR_SOMBRAS_SUAVES_FRAMES = false;
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -230,7 +230,7 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
 
-controls.enablePan = true;
+controls.enablePan = false;
 controls.screenSpacePanning = false;
 
 controls.minDistance = 4;
@@ -238,8 +238,9 @@ controls.maxDistance = 140;
 
 controls.minAzimuthAngle = -Infinity;
 controls.maxAzimuthAngle = Infinity;
+
 controls.minPolarAngle = 0.08;
-controls.maxPolarAngle = Math.PI / 2.05;
+controls.maxPolarAngle = Math.PI / 2.22;
 
 controls.rotateSpeed = 0.72;
 controls.zoomSpeed = 0.85;
