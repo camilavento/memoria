@@ -2,6 +2,7 @@
 // Reemplaza TODO tu archivo memorial.js por este código completo.
 // Solo aparecen frames reales guardados en localStorage.
 // La palabra MEMORIA se forma progresivamente conforme se agregan aportes.
+// Corrección: escenario limpio con planos interiores y sin vigas/bloques que se crucen al girar.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -28,8 +29,8 @@ const COLOR_MURO_LATERAL = 0x666a6e;
 const COLOR_SUELO = 0xb4b8bc;
 const COLOR_TECHO = 0x4b4f53;
 
-const ALTURA_MINIMA_CAMARA = 1.05;
-const ALTURA_MINIMA_TARGET = 1.2;
+const ALTURA_MINIMA_CAMARA = 1.25;
+const ALTURA_MINIMA_TARGET = 1.35;
 
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
 const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 6.4, 47);
@@ -155,7 +156,7 @@ if (!container) {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLOR_FONDO_GENERAL);
-scene.fog = new THREE.Fog(COLOR_FONDO_GENERAL, 85, 240);
+scene.fog = new THREE.Fog(COLOR_FONDO_GENERAL, 95, 260);
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -182,16 +183,20 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 
 controls.enableDamping = true;
-controls.dampingFactor = 0.06;
+controls.dampingFactor = 0.075;
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
 controls.enablePan = false;
 controls.screenSpacePanning = false;
-controls.minDistance = 4;
-controls.maxDistance = 140;
+
+controls.minDistance = 12;
+controls.maxDistance = 150;
+
 controls.minAzimuthAngle = -Infinity;
 controls.maxAzimuthAngle = Infinity;
-controls.minPolarAngle = 0.08;
-controls.maxPolarAngle = Math.PI / 2.22;
+
+controls.minPolarAngle = 0.28;
+controls.maxPolarAngle = Math.PI / 2.18;
+
 controls.rotateSpeed = 0.72;
 controls.zoomSpeed = 0.85;
 controls.panSpeed = 0.65;
@@ -205,25 +210,25 @@ scene.add(memorialGroup);
    ILUMINACIÓN
 ========================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.08));
+scene.add(new THREE.AmbientLight(0xffffff, 1.12));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
 keyLight.position.set(-12, 15, 22);
 scene.add(keyLight);
 
-const frontLight = new THREE.PointLight(0xffffff, 1.85, 80);
-frontLight.position.set(0, 7.2, 18);
+const frontLight = new THREE.PointLight(0xffffff, 1.85, 90);
+frontLight.position.set(0, 7.2, 20);
 scene.add(frontLight);
 
-const centerFillLight = new THREE.PointLight(0xd9e0e7, 1.18, 70);
+const centerFillLight = new THREE.PointLight(0xd9e0e7, 1.2, 78);
 centerFillLight.position.set(0, 5.2, -7.5);
 scene.add(centerFillLight);
 
-const backGlowLight = new THREE.PointLight(0xcfd6dd, 0.75, 52);
-backGlowLight.position.set(0, 6.2, -31);
+const backGlowLight = new THREE.PointLight(0xcfd6dd, 0.8, 62);
+backGlowLight.position.set(0, 6.2, -34);
 scene.add(backGlowLight);
 
-const floorBounceLight = new THREE.PointLight(0xbec5cc, 0.48, 42);
+const floorBounceLight = new THREE.PointLight(0xbec5cc, 0.48, 48);
 floorBounceLight.position.set(0, 1.0, -7.5);
 scene.add(floorBounceLight);
 
@@ -233,7 +238,7 @@ scene.add(floorBounceLight);
 
 let referenceRoom = null;
 
-function createMaterial(color, roughness = 0.88, metalness = 0.04, side = THREE.FrontSide) {
+function createFlatMaterial(color, roughness = 0.9, metalness = 0.03, side = THREE.FrontSide) {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
@@ -242,161 +247,190 @@ function createMaterial(color, roughness = 0.88, metalness = 0.04, side = THREE.
   });
 }
 
-function createLineMaterial(color = 0x45494d) {
-  return new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.96,
-    metalness: 0.02,
-    side: THREE.DoubleSide
-  });
-}
-
-function createPanelLine(width, height, depth, color = 0x45494d) {
-  return new THREE.Mesh(
-    new THREE.BoxGeometry(width, height, depth),
-    createLineMaterial(color)
-  );
-}
-
 function createReferenceRoom() {
   const room = new THREE.Group();
   room.name = "reference-room";
 
-  const roomWidth = 68;
-  const roomHeight = 12;
-  const roomDepth = 62;
+  /*
+    Escenario corregido:
+    - Sin vigas gruesas.
+    - Sin frontLintel.
+    - Sin frontTopSlab.
+    - Sin líneas hechas con BoxGeometry.
+    - Solo planos interiores y líneas delgadas.
+    Esto evita que las piezas se crucen frente a la cámara al girar.
+  */
+
+  const roomWidth = 86;
+  const roomHeight = 14;
+  const roomDepth = 94;
   const roomCenterZ = -10;
+
   const floorDepth = 190;
-  const floorCenterZ = roomCenterZ + 38;
+  const floorCenterZ = roomCenterZ + 30;
+
   const backZ = roomCenterZ - roomDepth / 2;
   const frontZ = roomCenterZ + roomDepth / 2;
 
-  const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(roomWidth, floorDepth),
-    new THREE.MeshStandardMaterial({
-      color: COLOR_SUELO,
-      roughness: 0.18,
-      metalness: 0.05,
-      side: THREE.FrontSide
-    })
+  const floorMaterial = createFlatMaterial(
+    COLOR_SUELO,
+    0.22,
+    0.04,
+    THREE.FrontSide
   );
 
+  const wallMaterial = createFlatMaterial(
+    COLOR_MURO,
+    0.94,
+    0.02,
+    THREE.FrontSide
+  );
+
+  const sideWallMaterial = createFlatMaterial(
+    COLOR_MURO_LATERAL,
+    0.94,
+    0.02,
+    THREE.FrontSide
+  );
+
+  const ceilingMaterial = createFlatMaterial(
+    COLOR_TECHO,
+    0.96,
+    0.02,
+    THREE.FrontSide
+  );
+
+  const lineMaterial = new THREE.LineBasicMaterial({
+    color: 0x3f4448,
+    transparent: true,
+    opacity: 0.55
+  });
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(roomWidth, floorDepth),
+    floorMaterial
+  );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, floorCenterZ);
   room.add(floor);
 
   const backWall = new THREE.Mesh(
     new THREE.PlaneGeometry(roomWidth, roomHeight),
-    createMaterial(COLOR_MURO, 0.92, 0.02, THREE.FrontSide)
+    wallMaterial
   );
-
   backWall.position.set(0, roomHeight / 2, backZ);
   room.add(backWall);
 
   const leftWall = new THREE.Mesh(
     new THREE.PlaneGeometry(floorDepth, roomHeight),
-    createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
+    sideWallMaterial
   );
-
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-roomWidth / 2, roomHeight / 2, floorCenterZ);
   room.add(leftWall);
 
   const rightWall = new THREE.Mesh(
     new THREE.PlaneGeometry(floorDepth, roomHeight),
-    createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
+    sideWallMaterial
   );
-
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(roomWidth / 2, roomHeight / 2, floorCenterZ);
   room.add(rightWall);
 
   const ceiling = new THREE.Mesh(
-    new THREE.PlaneGeometry(roomWidth, roomDepth + 18),
-    createMaterial(COLOR_TECHO, 0.95, 0.02, THREE.FrontSide)
+    new THREE.PlaneGeometry(roomWidth, roomDepth + 28),
+    ceilingMaterial
   );
-
   ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.set(0, roomHeight, roomCenterZ - 1.5);
+  ceiling.position.set(0, roomHeight, roomCenterZ - 2);
   room.add(ceiling);
 
-  const frontLintel = new THREE.Mesh(
-    new THREE.BoxGeometry(roomWidth + 2, 1.95, 1.45),
-    createMaterial(0x6d7276, 0.95, 0.02, THREE.DoubleSide)
-  );
-
-  frontLintel.position.set(0, roomHeight + 0.32, frontZ + 5.2);
-  room.add(frontLintel);
-
-  const frontTopSlab = new THREE.Mesh(
-    new THREE.BoxGeometry(roomWidth + 3.2, 1.2, 7.5),
-    createMaterial(0x6a6f73, 0.95, 0.02, THREE.DoubleSide)
-  );
-
-  frontTopSlab.position.set(0, roomHeight + 1.42, frontZ + 2.7);
-  room.add(frontTopSlab);
-
-  const verticalBackLines = [-24, -12, 0, 12, 24];
-
-  verticalBackLines.forEach(x => {
-    const line = createPanelLine(0.08, roomHeight - 0.9, 0.08, 0x45494d);
-    line.position.set(x, roomHeight / 2 + 0.05, backZ + 0.03);
+  function addWallLine(points) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const line = new THREE.Line(geometry, lineMaterial);
     room.add(line);
+  }
+
+  const backLineZ = backZ + 0.035;
+
+  const backVerticalLines = [-34, -22, -10, 2, 14, 26, 38];
+
+  backVerticalLines.forEach(x => {
+    addWallLine([
+      new THREE.Vector3(x, 0.35, backLineZ),
+      new THREE.Vector3(x, roomHeight - 0.45, backLineZ)
+    ]);
   });
 
-  const horizontalBackLines = [3.9, 7.6];
+  const backHorizontalLines = [4.1, 7.8, 11.5];
 
-  horizontalBackLines.forEach(y => {
-    const line = createPanelLine(roomWidth - 1.4, 0.08, 0.08, 0x45494d);
-    line.position.set(0, y, backZ + 0.04);
-    room.add(line);
+  backHorizontalLines.forEach(y => {
+    addWallLine([
+      new THREE.Vector3(-roomWidth / 2 + 0.7, y, backLineZ),
+      new THREE.Vector3(roomWidth / 2 - 0.7, y, backLineZ)
+    ]);
   });
 
-  const ribOffset = roomWidth / 2 - 1.25;
-  const ribPositions = [-ribOffset, -ribOffset + 0.8, ribOffset - 0.8, ribOffset];
+  function addSideWallVerticalLine(side, z) {
+    const x = side === "left"
+      ? -roomWidth / 2 + 0.035
+      : roomWidth / 2 - 0.035;
 
-  ribPositions.forEach(x => {
-    const rib = new THREE.Mesh(
-      new THREE.BoxGeometry(0.22, roomHeight - 0.7, 0.34),
-      createMaterial(0x484c50, 0.96, 0.02, THREE.DoubleSide)
-    );
+    addWallLine([
+      new THREE.Vector3(x, 0.35, z),
+      new THREE.Vector3(x, roomHeight - 0.5, z)
+    ]);
+  }
 
-    rib.position.set(x, roomHeight / 2 + 0.18, backZ + 1.3);
-    room.add(rib);
-  });
+  function addSideWallHorizontalLine(side, y) {
+    const x = side === "left"
+      ? -roomWidth / 2 + 0.035
+      : roomWidth / 2 - 0.035;
 
-  const sidePanelZ = [
-    roomCenterZ - 24,
-    roomCenterZ - 12,
-    roomCenterZ,
-    roomCenterZ + 12,
-    roomCenterZ + 24,
+    addWallLine([
+      new THREE.Vector3(x, y, roomCenterZ - 34),
+      new THREE.Vector3(x, y, roomCenterZ + 68)
+    ]);
+  }
+
+  const sideLinePositions = [
+    roomCenterZ - 34,
+    roomCenterZ - 22,
+    roomCenterZ - 10,
+    roomCenterZ + 2,
+    roomCenterZ + 14,
+    roomCenterZ + 26,
     roomCenterZ + 38,
-    roomCenterZ + 52
+    roomCenterZ + 50,
+    roomCenterZ + 62
   ];
 
-  sidePanelZ.forEach(z => {
-    const leftLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x4b4f53);
-    leftLine.position.set(-roomWidth / 2 + 0.08, roomHeight / 2, z);
-    leftLine.rotation.y = Math.PI / 2;
-    room.add(leftLine);
-
-    const rightLine = createPanelLine(0.08, roomHeight - 1, 0.08, 0x4b4f53);
-    rightLine.position.set(roomWidth / 2 - 0.08, roomHeight / 2, z);
-    rightLine.rotation.y = Math.PI / 2;
-    room.add(rightLine);
+  sideLinePositions.forEach(z => {
+    addSideWallVerticalLine("left", z);
+    addSideWallVerticalLine("right", z);
   });
 
-  const topOpeningLight = new THREE.PointLight(0xe6edf3, 1.25, 58);
-  topOpeningLight.position.set(0, 9.0, roomCenterZ + 4);
+  [4.1, 7.8, 11.5].forEach(y => {
+    addSideWallHorizontalLine("left", y);
+    addSideWallHorizontalLine("right", y);
+  });
+
+  const topOpeningLight = new THREE.PointLight(0xe6edf3, 1.05, 68);
+  topOpeningLight.position.set(0, 9.5, roomCenterZ + 6);
   room.add(topOpeningLight);
 
-  const backLight = new THREE.PointLight(0xd4dbe2, 0.7, 44);
-  backLight.position.set(0, 6.0, backZ + 3.2);
+  const backLight = new THREE.PointLight(0xd4dbe2, 0.65, 54);
+  backLight.position.set(0, 6.2, backZ + 4);
   room.add(backLight);
 
+  room.userData.roomWidth = roomWidth;
+  room.userData.roomHeight = roomHeight;
   room.userData.roomDepth = roomDepth;
+  room.userData.floorDepth = floorDepth;
   room.userData.roomCenterZ = roomCenterZ;
+  room.userData.floorCenterZ = floorCenterZ;
+  room.userData.backZ = backZ;
+  room.userData.frontZ = frontZ;
 
   return room;
 }
@@ -417,8 +451,8 @@ function limitarAlturaCamara() {
   const direccion = new THREE.Vector3();
   direccion.subVectors(camera.position, controls.target);
 
-  if (direccion.y < -0.25) {
-    camera.position.y = controls.target.y + 0.25;
+  if (direccion.y < -0.15) {
+    camera.position.y = controls.target.y + 0.15;
   }
 }
 
@@ -432,18 +466,24 @@ function posicionarMemorialDentroDeSalaReferencia() {
   const roomDepth = referenceRoom.userData.roomDepth;
   const roomCenterZ = referenceRoom.userData.roomCenterZ;
 
-  memorialGroup.position.set(0, 1.48, roomCenterZ + 4.5);
+  memorialGroup.position.set(0, 1.48, roomCenterZ + 4.8);
   memorialGroup.rotation.set(0, 0, 0);
 
-  camera.position.set(0, 6.4, roomCenterZ + roomDepth / 2 + 29);
-  controls.target.set(0, 2.75, roomCenterZ + 4.3);
+  camera.position.set(0, 6.7, roomCenterZ + roomDepth / 2 + 36);
+  controls.target.set(0, 2.9, roomCenterZ + 4.8);
 
-  controls.minDistance = 4;
-  controls.maxDistance = 140;
+  controls.enablePan = false;
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.075;
+
+  controls.minDistance = 12;
+  controls.maxDistance = 150;
+
   controls.minAzimuthAngle = -Infinity;
   controls.maxAzimuthAngle = Infinity;
-  controls.minPolarAngle = 0.08;
-  controls.maxPolarAngle = Math.PI / 2.22;
+
+  controls.minPolarAngle = 0.28;
+  controls.maxPolarAngle = Math.PI / 2.18;
 
   limitarAlturaCamara();
   controls.update();
