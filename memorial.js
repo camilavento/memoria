@@ -16,9 +16,9 @@ const MOSTRAR_GUIA_LETRAS = false;
 const INCLUIR_CARA_TRASERA = false;
 const INCLUIR_DIAGONALES = true;
 
-const ALTURA_OBJETIVO_LETRA = 4.4;
-const ANCHO_FRAME = 0.32;
-const ALTO_FRAME = 0.44;
+const ALTURA_OBJETIVO_LETRA = 4.2;
+const ANCHO_FRAME = 0.31;
+const ALTO_FRAME = 0.43;
 const PROFUNDIDAD_FRAME = 0.04;
 const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.34;
 const OFFSET_FRAME = 0.028;
@@ -30,21 +30,18 @@ const MOSTRAR_FONDO_GLB = true;
 /*
   AJUSTE PRINCIPAL:
   - La palabra NO se rota.
-  - El escenario se hace mas grande.
-  - El escenario se gira hacia atras para que la parte superior no mire al frente.
-  - La camara queda dentro del escenario.
-  - Se recorta la entrada del escenario para no verlo desde afuera.
+  - El fondo se hace mas grande.
+  - Se elimina el clipping porque estaba aplastando visualmente las letras.
+  - La camara queda mas libre para moverse y corregir vista.
 */
 
-const ROTACION_FONDO = new THREE.Euler(-Math.PI / 2, 0, 0);
-const ESCALA_FONDO_OBJETIVO = 52;
+const ROTACION_FONDO = new THREE.Euler(0, 0, 0);
+const ESCALA_FONDO_OBJETIVO = 62;
 const POSICION_FONDO = new THREE.Vector3(0, 0, -8);
 
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.4, -8);
-const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 3.4, 18);
-const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.5, -8);
-
-let planoCorteFrontal = null;
+const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.2, 34);
+const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 3.0, -8);
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -201,7 +198,7 @@ const memories = getMemories();
 const container = document.getElementById("threeContainer");
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x080706, 38, 100);
+scene.fog = new THREE.Fog(0x080706, 46, 140);
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -222,7 +219,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.localClippingEnabled = true;
+renderer.localClippingEnabled = false;
 renderer.setClearColor(0x080706, 1);
 
 container.appendChild(renderer.domElement);
@@ -232,49 +229,47 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
-controls.enablePan = false;
 
-controls.minDistance = 5;
-controls.maxDistance = 28;
+controls.enablePan = true;
+controls.screenSpacePanning = false;
 
-controls.minPolarAngle = Math.PI / 2.7;
-controls.maxPolarAngle = Math.PI / 1.82;
+controls.minDistance = 4;
+controls.maxDistance = 90;
 
-controls.minAzimuthAngle = -0.7;
-controls.maxAzimuthAngle = 0.7;
+controls.minPolarAngle = 0.15;
+controls.maxPolarAngle = Math.PI - 0.15;
+
+controls.enableRotate = true;
+controls.rotateSpeed = 0.8;
+controls.zoomSpeed = 0.8;
+controls.panSpeed = 0.55;
 
 const memorialGroup = new THREE.Group();
 memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
-
-/*
-  IMPORTANTE:
-  La palabra queda sin rotacion extra.
-*/
 memorialGroup.rotation.set(0, 0, 0);
-
 scene.add(memorialGroup);
 
 /* =========================================================
    ILUMINACION
    ========================================================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+scene.add(new THREE.AmbientLight(0xffffff, 1.28));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
-keyLight.position.set(-6, 10, 12);
+const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+keyLight.position.set(-8, 12, 16);
 keyLight.castShadow = true;
 scene.add(keyLight);
 
-const frontLight = new THREE.PointLight(0xffffff, 2.5, 44);
-frontLight.position.set(0, 5.2, 12);
+const frontLight = new THREE.PointLight(0xffffff, 2.8, 60);
+frontLight.position.set(0, 6, 18);
 scene.add(frontLight);
 
-const interiorLight = new THREE.PointLight(0xb6c7d6, 1.8, 44);
-interiorLight.position.set(0, 5, -8);
+const interiorLight = new THREE.PointLight(0xb6c7d6, 2.0, 70);
+interiorLight.position.set(0, 6, -8);
 scene.add(interiorLight);
 
-const warmSideLight = new THREE.PointLight(0xffd0a0, 1.1, 32);
-warmSideLight.position.set(-8, 3.5, 4);
+const warmSideLight = new THREE.PointLight(0xffd0a0, 1.2, 42);
+warmSideLight.position.set(-10, 4, 8);
 scene.add(warmSideLight);
 
 /* =========================================================
@@ -563,11 +558,6 @@ function cloneBackgroundMaterial(material) {
 
   cloned.side = THREE.DoubleSide;
 
-  if (planoCorteFrontal) {
-    cloned.clippingPlanes = [planoCorteFrontal];
-    cloned.clipShadows = true;
-  }
-
   if (cloned.map) {
     cloned.map.colorSpace = THREE.SRGBColorSpace;
     cloned.map.needsUpdate = true;
@@ -617,26 +607,6 @@ function styleBackgroundModel(model) {
   });
 }
 
-function applyClippingToBackground(model) {
-  model.traverse(child => {
-    if (!child.isMesh || !child.material || !planoCorteFrontal) {
-      return;
-    }
-
-    if (Array.isArray(child.material)) {
-      child.material.forEach(material => {
-        material.clippingPlanes = [planoCorteFrontal];
-        material.clipShadows = true;
-        material.needsUpdate = true;
-      });
-    } else {
-      child.material.clippingPlanes = [planoCorteFrontal];
-      child.material.clipShadows = true;
-      child.material.needsUpdate = true;
-    }
-  });
-}
-
 function prepareBackgroundModel(model) {
   const wrapper = new THREE.Group();
   wrapper.name = "memoriafondo";
@@ -661,22 +631,7 @@ function prepareBackgroundModel(model) {
   wrapper.position.y -= finalBox.min.y;
   wrapper.position.add(POSICION_FONDO);
 
-  wrapper.updateWorldMatrix(true, true);
-
-  const worldBox = new THREE.Box3().setFromObject(wrapper);
-  const worldSize = new THREE.Vector3();
-  worldBox.getSize(worldSize);
-
-  /*
-    Recorte frontal:
-    Esto elimina la parte mas cercana a la camara
-    para que el usuario mire desde dentro y no desde afuera.
-  */
-  const corteZ = worldBox.max.z - worldSize.z * 0.12;
-  planoCorteFrontal = new THREE.Plane(new THREE.Vector3(0, 0, -1), corteZ);
-
   styleBackgroundModel(wrapper);
-  applyClippingToBackground(wrapper);
 
   return wrapper;
 }
@@ -695,18 +650,15 @@ function posicionarMemorialDentroDelFondo() {
 
   const xInterior = center.x;
   const yInterior = box.min.y + size.y * 0.27;
-  const zInterior = center.z - size.z * 0.12;
+  const zInterior = center.z - size.z * 0.08;
 
-  /*
-    La palabra queda sin rotacion.
-  */
   memorialGroup.position.set(xInterior, yInterior, zInterior);
   memorialGroup.rotation.set(0, 0, 0);
 
   camera.position.set(
     center.x,
-    box.min.y + size.y * 0.35,
-    box.max.z - size.z * 0.08
+    box.min.y + size.y * 0.42,
+    box.max.z + size.z * 0.42
   );
 
   controls.target.set(
@@ -715,14 +667,8 @@ function posicionarMemorialDentroDelFondo() {
     zInterior
   );
 
-  controls.minDistance = Math.max(4, size.z * 0.08);
-  controls.maxDistance = Math.max(8, size.z * 0.24);
-
-  controls.minPolarAngle = Math.PI / 2.65;
-  controls.maxPolarAngle = Math.PI / 1.82;
-
-  controls.minAzimuthAngle = -0.65;
-  controls.maxAzimuthAngle = 0.65;
+  controls.minDistance = Math.max(4, size.z * 0.05);
+  controls.maxDistance = Math.max(18, size.z * 0.9);
 
   controls.update();
 }
