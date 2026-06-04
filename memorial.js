@@ -7,11 +7,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 
 /* =========================================================
-CONFIGURACIÓN GENERAL
+CONFIGURACION GENERAL
 ========================================================= */
 
 const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
+
+const INCLUIR_CARA_TRASERA = false;
+const INCLUIR_DIAGONALES = true;
 
 const ALTURA_OBJETIVO_LETRA = 5.4;
 const ANCHO_FRAME = 0.38;
@@ -25,18 +28,19 @@ const BACKGROUND_FILE = "models/memoriafondo.glb";
 const MOSTRAR_FONDO_GLB = true;
 
 /*
-IMPORTANTE:
-Esta versión vuelve a una cámara visible y estable.
-No esconde el fondo con BackSide.
-No mete la cámara dentro de una zona negra.
-Primero hace visible letras + fondo. Después ajustamos fino la orientación.
+Version estable:
+
+No usa backticks en ninguna parte del codigo.
+Carga las letras M E M O R I A.
+Carga el fondo memoriafondo.glb si existe.
+Si el fondo falla, deja un suelo y muro base para que las letras no desaparezcan.
 */
+
 const ROTACION_FONDO = new THREE.Euler(0, 0, 0);
 const ESCALA_FONDO_OBJETIVO = 34;
 const POSICION_FONDO = new THREE.Vector3(0, -0.05, -8);
 
 const POSICION_LETRAS = new THREE.Vector3(0, 0.65, -6.2);
-
 const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 4.4, 23);
 const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.8, -5.8);
 
@@ -130,7 +134,7 @@ url: "https://picsum.photos/400/520?1"
 {
 personId: "p002",
 name: "Presencia",
-message: "Recordar también es resistir.",
+message: "Recordar tambien es resistir.",
 type: "Imagen",
 relation: "Proyecto",
 files: [
@@ -144,14 +148,14 @@ url: "https://picsum.photos/400/520?2"
 {
 personId: "p003",
 name: "Archivo pendiente",
-message: "Esta memoria aún no tiene fotografía.",
+message: "Esta memoria aun no tiene fotografia.",
 type: "Escrito",
 relation: "Proyecto",
 files: []
 },
 {
 personId: "p004",
-name: "Registro sin fotografía",
+name: "Registro sin fotografia",
 message: "Buscamos archivos que completen su historia.",
 type: "Documento",
 relation: "Proyecto",
@@ -164,7 +168,7 @@ const saved = localStorage.getItem("memories");
 
 if (!saved) {
 localStorage.setItem("memories", JSON.stringify(defaultMemories));
-return [...defaultMemories];
+return defaultMemories.slice();
 }
 
 try {
@@ -172,21 +176,21 @@ const parsed = JSON.parse(saved);
 
 if (!Array.isArray(parsed) || parsed.length === 0) {
   localStorage.setItem("memories", JSON.stringify(defaultMemories));
-  return [...defaultMemories];
+  return defaultMemories.slice();
 }
 
 return parsed;
 
 } catch (error) {
 localStorage.setItem("memories", JSON.stringify(defaultMemories));
-return [...defaultMemories];
+return defaultMemories.slice();
 }
 }
 
 const memories = getMemories();
 
 /* =========================================================
-ESCENA
+ESCENA THREE
 ========================================================= */
 
 const container = document.getElementById("threeContainer");
@@ -221,16 +225,12 @@ const controls = new OrbitControls(camera, renderer.domElement);
 
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
-
 controls.enablePan = false;
 controls.minDistance = 8;
 controls.maxDistance = 32;
-
 controls.minPolarAngle = Math.PI / 3.3;
 controls.maxPolarAngle = Math.PI / 1.85;
-
 controls.minAzimuthAngle = -0.85;
 controls.maxAzimuthAngle = 0.85;
 
@@ -239,7 +239,7 @@ memorialGroup.position.copy(POSICION_LETRAS);
 scene.add(memorialGroup);
 
 /* =========================================================
-ILUMINACIÓN Y ESCENARIO BASE
+ILUMINACION Y ESCENARIO BASE
 ========================================================= */
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.05));
@@ -503,13 +503,14 @@ child.material = new THREE.MeshStandardMaterial({
   metalness: 0.14,
   transparent: true,
   opacity: MOSTRAR_GUIA_LETRAS ? 0.13 : 0,
-  depthWrite: false
+  depthWrite: false,
+  side: THREE.DoubleSide
 });
 
 });
 }
 
-function prepareGLBLetter(model, rotationConfig = { x: 0, y: 0, z: 0 }) {
+function prepareGLBLetter(model, rotationConfig) {
 styleLetterStructure(model);
 
 model.rotation.set(
@@ -560,11 +561,11 @@ cloned.emissiveIntensity = 0.22;
 }
 
 if ("roughness" in cloned) {
-cloned.roughness = Math.max(cloned.roughness ?? 0.7, 0.7);
+cloned.roughness = Math.max(cloned.roughness || 0.7, 0.7);
 }
 
 if ("metalness" in cloned) {
-cloned.metalness = cloned.metalness ?? 0.02;
+cloned.metalness = cloned.metalness || 0.02;
 }
 
 cloned.needsUpdate = true;
@@ -680,7 +681,8 @@ slot.position.z * 37.719
 ) * 43758.5453;
 
   return {
-    ...slot,
+    position: slot.position,
+    normal: slot.normal,
     sortValue: value - Math.floor(value)
   };
 })
@@ -802,6 +804,7 @@ CUPOS_POR_CARA.top
 )
 );
 
+if (INCLUIR_DIAGONALES) {
 finalSlots.push(
 ...filterSlots(
 slotsBySide.diagonal,
@@ -809,6 +812,17 @@ DISTANCIA_MINIMA_ENTRE_FRAMES,
 CUPOS_POR_CARA.diagonal
 )
 );
+}
+
+if (INCLUIR_CARA_TRASERA) {
+finalSlots.push(
+...filterSlots(
+slotsBySide.back,
+DISTANCIA_MINIMA_ENTRE_FRAMES,
+CUPOS_POR_CARA.back
+)
+);
+}
 
 return finalSlots.slice(0, MAX_FRAMES_POR_LETRA);
 }
@@ -821,7 +835,7 @@ function addFramesOn3DStructure(letterGroup, structureObject) {
 const slots = createSurfaceSlots(letterGroup, structureObject);
 
 const framesGroup = new THREE.Group();
-framesGroup.name = frames-${letterGroup.name};
+framesGroup.name = "frames-" + letterGroup.name;
 
 const totalFrames = MODO_DEMO_RELLENAR_PALABRA
 ? slots.length
@@ -860,7 +874,7 @@ FALLBACK SI UNA LETRA FALLA
 
 function addFramesOnFallbackVolume(letterGroup) {
 const framesGroup = new THREE.Group();
-framesGroup.name = fallback-frames-${letterGroup.name};
+framesGroup.name = "fallback-frames-" + letterGroup.name;
 
 const slots = [];
 const cols = 4;
@@ -986,7 +1000,7 @@ fitMemorialView();
 }
 
 function arrangeWord() {
-const orderedLetters = [...loadedLetters].sort((a, b) => a.order - b.order);
+const orderedLetters = loadedLetters.slice().sort((a, b) => a.order - b.order);
 
 orderedLetters.forEach(item => {
 const data = letterFiles.find(letter => letter.order === item.order);
@@ -1003,7 +1017,7 @@ item.group.position.z = 0;
 }
 
 function loadLetters() {
-const sortedLetters = [...letterFiles].sort((a, b) => a.order - b.order);
+const sortedLetters = letterFiles.slice().sort((a, b) => a.order - b.order);
 
 sortedLetters.forEach(data => {
 loader.load(
@@ -1024,7 +1038,7 @@ loadBackgroundModel();
 loadLetters();
 
 /* =========================================================
-CÁMARA
+CAMARA
 ========================================================= */
 
 function fitMemorialView() {
@@ -1050,7 +1064,7 @@ fitMemorialView();
 });
 
 /* =========================================================
-INTERACCIÓN
+INTERACCION
 ========================================================= */
 
 const raycaster = new THREE.Raycaster();
@@ -1094,7 +1108,7 @@ modalFiles.innerHTML = "";
 document.getElementById("modalTitle").textContent = memory.name || "Memoria";
 
 document.getElementById("modalMeta").textContent =
-${memory.type || "Aporte"} · Aporte: ${memory.relation || "Proyecto"};
+(memory.type || "Aporte") + " · Aporte: " + (memory.relation || "Proyecto");
 
 document.getElementById("modalMessage").textContent =
 memory.message || "Memoria aportada al proyecto.";
@@ -1144,7 +1158,7 @@ document.getElementById("memoryModal").classList.remove("active");
 });
 
 /* =========================================================
-ANIMACIÓN Y RESIZE
+ANIMACION Y RESIZE
 ========================================================= */
 
 function animate() {
