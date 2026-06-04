@@ -66,18 +66,17 @@ button{
   font-size:1rem;
 }
 
+/* Oculta los links superiores del lobby */
 .lobby-links{
-  position:absolute;
-  top:34px;
-  right:42px;
-  z-index:3;
-  display:grid;
-  gap:12px;
-  justify-items:end;
+  display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
 }
 
 .lobby-links a{
-  text-decoration:underline;
+  display:none !important;
+  text-decoration:none;
 }
 
 .lobby-content{
