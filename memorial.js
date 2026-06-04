@@ -1,7 +1,7 @@
 // memorial.js
 // Memorial 3D conectado a Supabase.
-// Ya no depende de localStorage para mostrar los frames.
-// Las memorias se cargan desde la tabla public.memories de Supabase.
+// Lee memorias desde Supabase.
+// Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -23,10 +23,10 @@ const OFFSET_FRAME = 0.028;
 const MAX_FRAMES_POR_LETRA = 68;
 
 const COLOR_FONDO_GENERAL = 0x5b5f63;
-const COLOR_MURO = 0x55595d;
-const COLOR_MURO_LATERAL = 0x666a6e;
-const COLOR_SUELO = 0xb4b8bc;
-const COLOR_TECHO = 0x4b4f53;
+const COLOR_MURO = 0xffffff;
+const COLOR_MURO_LATERAL = 0xffffff;
+const COLOR_SUELO = 0xffffff;
+const COLOR_TECHO = 0xffffff;
 
 const ALTURA_MINIMA_CAMARA = 1.25;
 const ALTURA_MINIMA_TARGET = 1.35;
@@ -37,6 +37,9 @@ const DISTANCIA_MAXIMA_CAMARA = 42;
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
 const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.8, 61);
 const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.75, -5.5);
+
+const WALL_TEXTURE_PATH = "textures/paredes.png";
+const FLOOR_TEXTURE_PATH = "textures/piso.png";
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -224,11 +227,16 @@ memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
 memorialGroup.rotation.set(0, 0, 0);
 scene.add(memorialGroup);
 
+const gltfLoader = new GLTFLoader();
+const textureLoader = new THREE.TextureLoader();
+
+textureLoader.crossOrigin = "anonymous";
+
 /* =========================
    ILUMINACIÓN
 ========================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.12));
+scene.add(new THREE.AmbientLight(0xffffff, 1.18));
 
 const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
 keyLight.position.set(-12, 15, 22);
@@ -251,17 +259,46 @@ floorBounceLight.position.set(0, 1.0, -7.5);
 scene.add(floorBounceLight);
 
 /* =========================
-   ESCENARIO
+   ESCENARIO CON TEXTURAS PNG
 ========================= */
 
 let referenceRoom = null;
 
-function createFlatMaterial(color, roughness = 0.9, metalness = 0.03, side = THREE.FrontSide) {
+function loadTiledTexture(path, repeatX, repeatY) {
+  const texture = textureLoader.load(
+    path,
+    loadedTexture => {
+      loadedTexture.colorSpace = THREE.SRGBColorSpace;
+      loadedTexture.needsUpdate = true;
+    },
+    undefined,
+    error => {
+      console.warn("No se pudo cargar la textura:", path, error);
+    }
+  );
+
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeatX, repeatY);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
+  return texture;
+}
+
+function createFlatMaterial({
+  color,
+  roughness = 0.9,
+  metalness = 0.03,
+  side = THREE.FrontSide,
+  map = null
+}) {
   return new THREE.MeshStandardMaterial({
     color,
     roughness,
     metalness,
-    side
+    side,
+    map
   });
 }
 
@@ -280,38 +317,47 @@ function createReferenceRoom() {
   const backZ = roomCenterZ - roomDepth / 2;
   const frontZ = roomCenterZ + roomDepth / 2;
 
-  const floorMaterial = createFlatMaterial(
-    COLOR_SUELO,
-    0.22,
-    0.04,
-    THREE.FrontSide
-  );
+  const backWallTexture = loadTiledTexture(WALL_TEXTURE_PATH, 8, 3);
+  const sideWallTexture = loadTiledTexture(WALL_TEXTURE_PATH, 14, 3);
+  const floorTexture = loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 16);
+  const ceilingTexture = loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 8);
 
-  const wallMaterial = createFlatMaterial(
-    COLOR_MURO,
-    0.94,
-    0.02,
-    THREE.FrontSide
-  );
+  const floorMaterial = createFlatMaterial({
+    color: COLOR_SUELO,
+    roughness: 0.32,
+    metalness: 0.02,
+    side: THREE.FrontSide,
+    map: floorTexture
+  });
 
-  const sideWallMaterial = createFlatMaterial(
-    COLOR_MURO_LATERAL,
-    0.94,
-    0.02,
-    THREE.FrontSide
-  );
+  const wallMaterial = createFlatMaterial({
+    color: COLOR_MURO,
+    roughness: 0.88,
+    metalness: 0.01,
+    side: THREE.FrontSide,
+    map: backWallTexture
+  });
 
-  const ceilingMaterial = createFlatMaterial(
-    COLOR_TECHO,
-    0.96,
-    0.02,
-    THREE.FrontSide
-  );
+  const sideWallMaterial = createFlatMaterial({
+    color: COLOR_MURO_LATERAL,
+    roughness: 0.88,
+    metalness: 0.01,
+    side: THREE.FrontSide,
+    map: sideWallTexture
+  });
+
+  const ceilingMaterial = createFlatMaterial({
+    color: COLOR_TECHO,
+    roughness: 0.9,
+    metalness: 0.01,
+    side: THREE.FrontSide,
+    map: ceilingTexture
+  });
 
   const lineMaterial = new THREE.LineBasicMaterial({
-    color: 0x3f4448,
+    color: 0x6f6f6f,
     transparent: true,
-    opacity: 0.55
+    opacity: 0.3
   });
 
   const floor = new THREE.Mesh(
@@ -528,13 +574,8 @@ function loadBackgroundModel() {
 }
 
 /* =========================
-   LOADERS
+   LOADERS / LETRAS
 ========================= */
-
-const loader = new GLTFLoader();
-const textureLoader = new THREE.TextureLoader();
-
-textureLoader.crossOrigin = "anonymous";
 
 const loadedLetters = [];
 let framesConstruidos = false;
@@ -587,7 +628,7 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
 }
 
 /* =========================
-   TEXTURAS
+   TEXTURAS DE FRAMES
 ========================= */
 
 function makeTextCardTexture(memory) {
@@ -1144,7 +1185,7 @@ function loadLetters() {
   const sortedLetters = letterFiles.slice().sort((a, b) => a.order - b.order);
 
   sortedLetters.forEach(data => {
-    loader.load(
+    gltfLoader.load(
       encodeURI(data.file),
       gltf => {
         createLetter(data, gltf.scene);
