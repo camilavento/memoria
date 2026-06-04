@@ -1,6 +1,6 @@
 <!-- aportar.html -->
 
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -25,15 +25,23 @@
 
     <form id="memoryForm" class="memory-form">
       <label>
+        Buscar persona detenida desaparecida
+        <input
+          id="personSearch"
+          type="text"
+          placeholder="Escribe un nombre, comuna, ciudad o región..."
+          autocomplete="off"
+        >
+      </label>
+
+      <label>
         Persona detenida desaparecida
         <select id="personSelect" required>
-          <option value="">Selecciona una persona</option>
-          <option value="p001">Memoria colectiva — Chile</option>
-          <option value="p002">Presencia — Chile</option>
-          <option value="p003">Archivo pendiente — Chile</option>
-          <option value="p004">Registro sin fotografía — Chile</option>
+          <option value="">Cargando base de datos...</option>
         </select>
       </label>
+
+      <div id="selectedPersonInfo" class="selected-person-info" aria-live="polite"></div>
 
       <label>
         Tipo de aporte
@@ -64,13 +72,15 @@
           <option value="Amistad">Amistad</option>
           <option value="Investigador/a">Investigador/a</option>
           <option value="Ciudadano/a">Ciudadano/a</option>
+          <option value="Estudiante">Estudiante</option>
+          <option value="Comunidad">Comunidad</option>
           <option value="Otro">Otro</option>
         </select>
       </label>
 
       <label class="checkbox-label">
         <input id="consentInput" type="checkbox" required>
-        Confirmo que este aporte puede ser revisado antes de publicarse.
+        Confirmo que este aporte puede formar parte del memorial digital del proyecto.
       </label>
 
       <button type="submit">Construir memoria</button>
