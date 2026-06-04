@@ -1,5 +1,11 @@
 // memorial.js
 // REEMPLAZA COMPLETO TU ARCHIVO memorial.js POR ESTE
+// AJUSTE: SOLO SE CORRIGE EL FONDO / ESCENARIO
+// - La palabra se mantiene igual
+// - El fondo se hace mas grande
+// - El fondo se gira hacia atras
+// - La vista queda centrada desde dentro del escenario
+// - Se ajustan camara y controles para parecerse mas al render de referencia
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -28,20 +34,18 @@ const BACKGROUND_FILE = "models/memoriafondo.glb";
 const MOSTRAR_FONDO_GLB = true;
 
 /*
-  AJUSTE PRINCIPAL:
-  - La palabra NO se rota.
-  - El fondo se hace mas grande.
-  - Se elimina el clipping porque estaba aplastando visualmente las letras.
-  - La camara queda mas libre para moverse y corregir vista.
+  SOLO FONDO:
+  - girado hacia atras
+  - mas grande
+  - la camara queda dentro y centrada
 */
+const ROTACION_FONDO = new THREE.Euler(0, Math.PI, 0);
+const ESCALA_FONDO_OBJETIVO = 78;
+const POSICION_FONDO = new THREE.Vector3(0, -0.12, -8);
 
-const ROTACION_FONDO = new THREE.Euler(0, 0, 0);
-const ESCALA_FONDO_OBJETIVO = 62;
-const POSICION_FONDO = new THREE.Vector3(0, 0, -8);
-
-const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.4, -8);
-const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.2, 34);
-const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 3.0, -8);
+const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.45, -8);
+const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.6, 24);
+const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.9, -8);
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -198,7 +202,7 @@ const memories = getMemories();
 const container = document.getElementById("threeContainer");
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x080706, 46, 140);
+scene.fog = new THREE.Fog(0x0b0a09, 50, 160);
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -225,24 +229,22 @@ renderer.setClearColor(0x080706, 1);
 container.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
+controls.enablePan = false;
 
-controls.enablePan = true;
-controls.screenSpacePanning = false;
+controls.minDistance = 8;
+controls.maxDistance = 55;
 
-controls.minDistance = 4;
-controls.maxDistance = 90;
+controls.minPolarAngle = Math.PI / 2.45;
+controls.maxPolarAngle = Math.PI / 1.9;
 
-controls.minPolarAngle = 0.15;
-controls.maxPolarAngle = Math.PI - 0.15;
+controls.minAzimuthAngle = -0.35;
+controls.maxAzimuthAngle = 0.35;
 
-controls.enableRotate = true;
-controls.rotateSpeed = 0.8;
+controls.rotateSpeed = 0.65;
 controls.zoomSpeed = 0.8;
-controls.panSpeed = 0.55;
 
 const memorialGroup = new THREE.Group();
 memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
@@ -253,23 +255,23 @@ scene.add(memorialGroup);
    ILUMINACION
    ========================================================= */
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.28));
+scene.add(new THREE.AmbientLight(0xffffff, 1.18));
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
 keyLight.position.set(-8, 12, 16);
 keyLight.castShadow = true;
 scene.add(keyLight);
 
-const frontLight = new THREE.PointLight(0xffffff, 2.8, 60);
-frontLight.position.set(0, 6, 18);
+const frontLight = new THREE.PointLight(0xffffff, 2.4, 58);
+frontLight.position.set(0, 6.5, 18);
 scene.add(frontLight);
 
-const interiorLight = new THREE.PointLight(0xb6c7d6, 2.0, 70);
-interiorLight.position.set(0, 6, -8);
+const interiorLight = new THREE.PointLight(0xc8d1db, 1.85, 82);
+interiorLight.position.set(0, 6, -12);
 scene.add(interiorLight);
 
-const warmSideLight = new THREE.PointLight(0xffd0a0, 1.2, 42);
-warmSideLight.position.set(-10, 4, 8);
+const warmSideLight = new THREE.PointLight(0xffd0a0, 1.05, 34);
+warmSideLight.position.set(-8, 4, 8);
 scene.add(warmSideLight);
 
 /* =========================================================
@@ -327,7 +329,7 @@ function getObjectBox(object) {
   box.getSize(size);
   box.getCenter(center);
 
-  return { box: box, size: size, center: center };
+  return { box, size, center };
 }
 
 function centerObject(object) {
@@ -555,7 +557,6 @@ function prepareGLBLetter(model, rotationConfig) {
 
 function cloneBackgroundMaterial(material) {
   const cloned = material.clone();
-
   cloned.side = THREE.DoubleSide;
 
   if (cloned.map) {
@@ -648,27 +649,27 @@ function posicionarMemorialDentroDelFondo() {
   const size = info.size;
   const center = info.center;
 
-  const xInterior = center.x;
-  const yInterior = box.min.y + size.y * 0.27;
-  const zInterior = center.z - size.z * 0.08;
+  const letrasX = center.x;
+  const letrasY = box.min.y + size.y * 0.235;
+  const letrasZ = center.z - size.z * 0.02;
 
-  memorialGroup.position.set(xInterior, yInterior, zInterior);
+  memorialGroup.position.set(letrasX, letrasY, letrasZ);
   memorialGroup.rotation.set(0, 0, 0);
 
   camera.position.set(
     center.x,
-    box.min.y + size.y * 0.42,
-    box.max.z + size.z * 0.42
+    box.min.y + size.y * 0.30,
+    box.max.z - size.z * 0.20
   );
 
   controls.target.set(
-    xInterior,
-    yInterior + size.y * 0.04,
-    zInterior
+    center.x,
+    letrasY + size.y * 0.025,
+    center.z - size.z * 0.03
   );
 
-  controls.minDistance = Math.max(4, size.z * 0.05);
-  controls.maxDistance = Math.max(18, size.z * 0.9);
+  controls.minDistance = Math.max(8, size.z * 0.12);
+  controls.maxDistance = Math.max(22, size.z * 0.42);
 
   controls.update();
 }
