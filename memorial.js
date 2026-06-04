@@ -1,20 +1,18 @@
 // memorial.js
-// REEMPLAZA COMPLETO TU ARCHIVO memorial.js POR ESTE
+// Reemplaza TODO tu archivo memorial.js por este código completo.
+// Solo aparecen frames reales guardados en localStorage.
+// La palabra MEMORIA se forma progresivamente conforme se agregan aportes.
 
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 
-/* =========================================================
-   CONFIGURACION GENERAL
-   ========================================================= */
+/* =========================
+   CONFIGURACIÓN
+========================= */
 
-const MODO_DEMO_RELLENAR_PALABRA = true;
 const MOSTRAR_GUIA_LETRAS = false;
-
-const INCLUIR_CARA_TRASERA = false;
-const INCLUIR_DIAGONALES = true;
 
 const ALTURA_OBJETIVO_LETRA = 4.2;
 const ANCHO_FRAME = 0.31;
@@ -23,14 +21,6 @@ const PROFUNDIDAD_FRAME = 0.04;
 const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.34;
 const OFFSET_FRAME = 0.028;
 const MAX_FRAMES_POR_LETRA = 68;
-
-const USAR_ESCENARIO_REFERENCIA = true;
-const BACKGROUND_FILE = "models/memoriafondo.glb";
-const MOSTRAR_FONDO_GLB = false;
-
-const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
-const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 6.4, 47);
-const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.75, -5.5);
 
 const COLOR_FONDO_GENERAL = 0x5b5f63;
 const COLOR_MURO = 0x55595d;
@@ -41,7 +31,9 @@ const COLOR_TECHO = 0x4b4f53;
 const ALTURA_MINIMA_CAMARA = 1.05;
 const ALTURA_MINIMA_TARGET = 1.2;
 
-const ACTIVAR_SOMBRAS_SUAVES_FRAMES = false;
+const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
+const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 6.4, 47);
+const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.75, -5.5);
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -51,10 +43,6 @@ const CUPOS_POR_CARA = {
   diagonal: 6,
   back: 0
 };
-
-/* =========================================================
-   ARCHIVOS GLB DE LETRAS
-   ========================================================= */
 
 const letterFiles = [
   {
@@ -115,87 +103,55 @@ const letterFiles = [
   }
 ];
 
-/* =========================================================
-   MEMORIAS
-   ========================================================= */
+/* =========================
+   MEMORIAS REALES
+========================= */
 
-const defaultMemories = [
-  {
-    personId: "p001",
-    name: "Memoria colectiva",
-    message: "Cada rostro construye la palabra.",
-    type: "Imagen",
-    relation: "Proyecto",
-    files: [
-      {
-        name: "referencia.jpg",
-        type: "image",
-        url: "https://picsum.photos/400/520?1"
-      }
-    ]
-  },
-  {
-    personId: "p002",
-    name: "Presencia",
-    message: "Recordar tambien es resistir.",
-    type: "Imagen",
-    relation: "Proyecto",
-    files: [
-      {
-        name: "referencia.jpg",
-        type: "image",
-        url: "https://picsum.photos/400/520?2"
-      }
-    ]
-  },
-  {
-    personId: "p003",
-    name: "Archivo pendiente",
-    message: "Esta memoria aun no tiene fotografia.",
-    type: "Escrito",
-    relation: "Proyecto",
-    files: []
-  },
-  {
-    personId: "p004",
-    name: "Registro sin fotografia",
-    message: "Buscamos archivos que completen su historia.",
-    type: "Documento",
-    relation: "Proyecto",
-    files: []
-  }
-];
+function isDemoMemory(memory) {
+  const demoIds = ["p001", "p002", "p003", "p004"];
+
+  const demoNames = [
+    "Memoria colectiva",
+    "Presencia",
+    "Archivo pendiente",
+    "Registro sin fotografia"
+  ];
+
+  return demoIds.includes(memory.personId) || demoNames.includes(memory.name);
+}
 
 function getMemories() {
   const saved = localStorage.getItem("memories");
 
   if (!saved) {
-    localStorage.setItem("memories", JSON.stringify(defaultMemories));
-    return defaultMemories.slice();
+    return [];
   }
 
   try {
     const parsed = JSON.parse(saved);
 
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem("memories", JSON.stringify(defaultMemories));
-      return defaultMemories.slice();
+    if (!Array.isArray(parsed)) {
+      return [];
     }
 
-    return parsed;
+    return parsed.filter(memory => !isDemoMemory(memory));
   } catch (error) {
-    localStorage.setItem("memories", JSON.stringify(defaultMemories));
-    return defaultMemories.slice();
+    console.warn("No se pudieron leer las memorias guardadas:", error);
+    return [];
   }
 }
 
 const memories = getMemories();
 
-/* =========================================================
-   ESCENA THREE
-   ========================================================= */
+/* =========================
+   ESCENA
+========================= */
 
 const container = document.getElementById("threeContainer");
+
+if (!container) {
+  throw new Error("No existe el contenedor #threeContainer en memorial.html");
+}
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLOR_FONDO_GENERAL);
@@ -203,7 +159,7 @@ scene.fog = new THREE.Fog(COLOR_FONDO_GENERAL, 85, 240);
 
 const camera = new THREE.PerspectiveCamera(
   35,
-  container.clientWidth / container.clientHeight,
+  Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1),
   0.1,
   1000
 );
@@ -219,7 +175,6 @@ renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = false;
-renderer.localClippingEnabled = false;
 renderer.setClearColor(COLOR_FONDO_GENERAL, 1);
 
 container.appendChild(renderer.domElement);
@@ -229,19 +184,14 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
 controls.target.copy(OBJETIVO_CAMARA_INICIAL);
-
 controls.enablePan = false;
 controls.screenSpacePanning = false;
-
 controls.minDistance = 4;
 controls.maxDistance = 140;
-
 controls.minAzimuthAngle = -Infinity;
 controls.maxAzimuthAngle = Infinity;
-
 controls.minPolarAngle = 0.08;
 controls.maxPolarAngle = Math.PI / 2.22;
-
 controls.rotateSpeed = 0.72;
 controls.zoomSpeed = 0.85;
 controls.panSpeed = 0.65;
@@ -250,15 +200,15 @@ const memorialGroup = new THREE.Group();
 memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
 memorialGroup.rotation.set(0, 0, 0);
 scene.add(memorialGroup);
-/* =========================================================
-   ILUMINACION
-   ========================================================= */
+
+/* =========================
+   ILUMINACIÓN
+========================= */
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.08));
 
 const keyLight = new THREE.DirectionalLight(0xffffff, 2.35);
 keyLight.position.set(-12, 15, 22);
-keyLight.castShadow = false;
 scene.add(keyLight);
 
 const frontLight = new THREE.PointLight(0xffffff, 1.85, 80);
@@ -277,11 +227,10 @@ const floorBounceLight = new THREE.PointLight(0xbec5cc, 0.48, 42);
 floorBounceLight.position.set(0, 1.0, -7.5);
 scene.add(floorBounceLight);
 
-/* =========================================================
-   ESCENARIO REFERENCIA
-   ========================================================= */
+/* =========================
+   ESCENARIO
+========================= */
 
-let backgroundModel = null;
 let referenceRoom = null;
 
 function createMaterial(color, roughness = 0.88, metalness = 0.04, side = THREE.FrontSide) {
@@ -313,19 +262,12 @@ function createReferenceRoom() {
   const room = new THREE.Group();
   room.name = "reference-room";
 
-  /*
-    El suelo ahora es SOLO un plano.
-    No tiene grosor, por eso ya no aparece la franja gris lateral
-    cuando se gira la camara.
-  */
   const roomWidth = 68;
   const roomHeight = 12;
   const roomDepth = 62;
   const roomCenterZ = -10;
-
   const floorDepth = 190;
   const floorCenterZ = roomCenterZ + 38;
-
   const backZ = roomCenterZ - roomDepth / 2;
   const frontZ = roomCenterZ + roomDepth / 2;
 
@@ -341,13 +283,13 @@ function createReferenceRoom() {
 
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, floorCenterZ);
-  floor.receiveShadow = false;
   room.add(floor);
 
   const backWall = new THREE.Mesh(
     new THREE.PlaneGeometry(roomWidth, roomHeight),
     createMaterial(COLOR_MURO, 0.92, 0.02, THREE.FrontSide)
   );
+
   backWall.position.set(0, roomHeight / 2, backZ);
   room.add(backWall);
 
@@ -355,6 +297,7 @@ function createReferenceRoom() {
     new THREE.PlaneGeometry(floorDepth, roomHeight),
     createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
   );
+
   leftWall.rotation.y = Math.PI / 2;
   leftWall.position.set(-roomWidth / 2, roomHeight / 2, floorCenterZ);
   room.add(leftWall);
@@ -363,6 +306,7 @@ function createReferenceRoom() {
     new THREE.PlaneGeometry(floorDepth, roomHeight),
     createMaterial(COLOR_MURO_LATERAL, 0.92, 0.02, THREE.FrontSide)
   );
+
   rightWall.rotation.y = -Math.PI / 2;
   rightWall.position.set(roomWidth / 2, roomHeight / 2, floorCenterZ);
   room.add(rightWall);
@@ -371,6 +315,7 @@ function createReferenceRoom() {
     new THREE.PlaneGeometry(roomWidth, roomDepth + 18),
     createMaterial(COLOR_TECHO, 0.95, 0.02, THREE.FrontSide)
   );
+
   ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, roomHeight, roomCenterZ - 1.5);
   room.add(ceiling);
@@ -379,6 +324,7 @@ function createReferenceRoom() {
     new THREE.BoxGeometry(roomWidth + 2, 1.95, 1.45),
     createMaterial(0x6d7276, 0.95, 0.02, THREE.DoubleSide)
   );
+
   frontLintel.position.set(0, roomHeight + 0.32, frontZ + 5.2);
   room.add(frontLintel);
 
@@ -386,6 +332,7 @@ function createReferenceRoom() {
     new THREE.BoxGeometry(roomWidth + 3.2, 1.2, 7.5),
     createMaterial(0x6a6f73, 0.95, 0.02, THREE.DoubleSide)
   );
+
   frontTopSlab.position.set(0, roomHeight + 1.42, frontZ + 2.7);
   room.add(frontTopSlab);
 
@@ -413,6 +360,7 @@ function createReferenceRoom() {
       new THREE.BoxGeometry(0.22, roomHeight - 0.7, 0.34),
       createMaterial(0x484c50, 0.96, 0.02, THREE.DoubleSide)
     );
+
     rib.position.set(x, roomHeight / 2 + 0.18, backZ + 1.3);
     room.add(rib);
   });
@@ -447,17 +395,16 @@ function createReferenceRoom() {
   backLight.position.set(0, 6.0, backZ + 3.2);
   room.add(backLight);
 
-  room.userData.roomWidth = roomWidth;
-  room.userData.roomHeight = roomHeight;
   room.userData.roomDepth = roomDepth;
-  room.userData.floorDepth = floorDepth;
   room.userData.roomCenterZ = roomCenterZ;
-  room.userData.floorCenterZ = floorCenterZ;
-  room.userData.backZ = backZ;
-  room.userData.frontZ = frontZ;
 
   return room;
 }
+
+/* =========================
+   CÁMARA
+========================= */
+
 function limitarAlturaCamara() {
   if (camera.position.y < ALTURA_MINIMA_CAMARA) {
     camera.position.y = ALTURA_MINIMA_CAMARA;
@@ -467,11 +414,6 @@ function limitarAlturaCamara() {
     controls.target.y = ALTURA_MINIMA_TARGET;
   }
 
-  /*
-    Evita que la camara mire desde debajo del suelo.
-    Asi las personas pueden girar alrededor y por arriba,
-    pero no quedan viendo por debajo de las letras.
-  */
   const direccion = new THREE.Vector3();
   direccion.subVectors(camera.position, controls.target);
 
@@ -493,19 +435,13 @@ function posicionarMemorialDentroDeSalaReferencia() {
   memorialGroup.position.set(0, 1.48, roomCenterZ + 4.5);
   memorialGroup.rotation.set(0, 0, 0);
 
-  /*
-    Vista inicial:
-    parte mostrando la palabra MEMORIA completa.
-  */
   camera.position.set(0, 6.4, roomCenterZ + roomDepth / 2 + 29);
   controls.target.set(0, 2.75, roomCenterZ + 4.3);
 
   controls.minDistance = 4;
   controls.maxDistance = 140;
-
   controls.minAzimuthAngle = -Infinity;
   controls.maxAzimuthAngle = Infinity;
-
   controls.minPolarAngle = 0.08;
   controls.maxPolarAngle = Math.PI / 2.22;
 
@@ -514,45 +450,26 @@ function posicionarMemorialDentroDeSalaReferencia() {
 }
 
 function loadBackgroundModel() {
-  if (USAR_ESCENARIO_REFERENCIA) {
-    referenceRoom = createReferenceRoom();
-    scene.add(referenceRoom);
-    posicionarMemorialDentroDeSalaReferencia();
-    return;
-  }
-
-  if (!MOSTRAR_FONDO_GLB) {
-    return;
-  }
-
-  const loader = new GLTFLoader();
-
-  loader.load(
-    encodeURI(BACKGROUND_FILE),
-    gltf => {
-      backgroundModel = gltf.scene;
-      scene.add(backgroundModel);
-    },
-    undefined,
-    error => {
-      console.warn("No se pudo cargar el fondo 3D:", BACKGROUND_FILE, error);
-    }
-  );
+  referenceRoom = createReferenceRoom();
+  scene.add(referenceRoom);
+  posicionarMemorialDentroDeSalaReferencia();
 }
 
-/* =========================================================
+/* =========================
    LOADERS
-   ========================================================= */
+========================= */
 
 const loader = new GLTFLoader();
 const textureLoader = new THREE.TextureLoader();
+
 textureLoader.crossOrigin = "anonymous";
 
 const loadedLetters = [];
+let framesConstruidos = false;
 
-/* =========================================================
+/* =========================
    UTILIDADES
-   ========================================================= */
+========================= */
 
 function getObjectBox(object) {
   object.updateWorldMatrix(true, true);
@@ -597,9 +514,9 @@ function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
   }
 }
 
-/* =========================================================
-   TEXTURAS DE FRAME
-   ========================================================= */
+/* =========================
+   TEXTURAS
+========================= */
 
 function makeTextCardTexture(memory) {
   const canvas = document.createElement("canvas");
@@ -662,9 +579,9 @@ function getFrameTexture(memory) {
   return makeTextCardTexture(memory);
 }
 
-/* =========================================================
+/* =========================
    FRAME
-   ========================================================= */
+========================= */
 
 function createFrame(memory) {
   const group = new THREE.Group();
@@ -708,15 +625,6 @@ function createFrame(memory) {
   backPhoto.position.z = -(PROFUNDIDAD_FRAME / 2 + 0.004);
   backPhoto.rotation.y = Math.PI;
 
-  backing.castShadow = false;
-  backing.receiveShadow = true;
-
-  frontPhoto.castShadow = false;
-  frontPhoto.receiveShadow = true;
-
-  backPhoto.castShadow = false;
-  backPhoto.receiveShadow = true;
-
   backing.userData.isFrame = true;
   backing.userData.memory = memory;
 
@@ -735,18 +643,16 @@ function createFrame(memory) {
 
   return group;
 }
-/* =========================================================
-   LETRAS COMO ESTRUCTURA INVISIBLE
-   ========================================================= */
+
+/* =========================
+   LETRAS INVISIBLES
+========================= */
 
 function styleLetterStructure(model) {
   model.traverse(child => {
     if (!child.isMesh) {
       return;
     }
-
-    child.castShadow = false;
-    child.receiveShadow = false;
 
     child.material = new THREE.MeshStandardMaterial({
       color: 0x4a2d17,
@@ -785,9 +691,9 @@ function prepareGLBLetter(model, rotationConfig) {
   return wrapper;
 }
 
-/* =========================================================
-   SLOTS SOBRE LA SUPERFICIE 3D
-   ========================================================= */
+/* =========================
+   SLOTS
+========================= */
 
 function getSurfaceSide(normal) {
   if (normal.z > 0.48) return "front";
@@ -934,45 +840,32 @@ function createSurfaceSlots(letterGroup, structureObject) {
     )
   );
 
-  if (INCLUIR_DIAGONALES) {
-    finalSlots.push(
-      ...filterSlots(
-        slotsBySide.diagonal,
-        DISTANCIA_MINIMA_ENTRE_FRAMES,
-        CUPOS_POR_CARA.diagonal
-      )
-    );
-  }
-
-  if (INCLUIR_CARA_TRASERA) {
-    finalSlots.push(
-      ...filterSlots(
-        slotsBySide.back,
-        DISTANCIA_MINIMA_ENTRE_FRAMES,
-        CUPOS_POR_CARA.back
-      )
-    );
-  }
+  finalSlots.push(
+    ...filterSlots(
+      slotsBySide.diagonal,
+      DISTANCIA_MINIMA_ENTRE_FRAMES,
+      CUPOS_POR_CARA.diagonal
+    )
+  );
 
   return finalSlots.slice(0, MAX_FRAMES_POR_LETRA);
 }
 
-/* =========================================================
-   AÑADIR FRAMES A LETRAS
-   ========================================================= */
+/* =========================
+   FRAMES PROGRESIVOS
+========================= */
 
-function addFramesOn3DStructure(letterGroup, structureObject) {
+function addFramesOn3DStructure(letterGroup, structureObject, startIndex) {
   const slots = createSurfaceSlots(letterGroup, structureObject);
 
   const framesGroup = new THREE.Group();
   framesGroup.name = "frames-" + letterGroup.name;
 
-  const totalFrames = MODO_DEMO_RELLENAR_PALABRA
-    ? slots.length
-    : Math.min(slots.length, memories.length);
+  const remainingMemories = Math.max(0, memories.length - startIndex);
+  const totalFrames = Math.min(slots.length, remainingMemories);
 
   for (let i = 0; i < totalFrames; i++) {
-    const memory = memories[i % memories.length];
+    const memory = memories[startIndex + i];
     const slot = slots[i];
     const frame = createFrame(memory);
 
@@ -995,13 +888,11 @@ function addFramesOn3DStructure(letterGroup, structureObject) {
   }
 
   letterGroup.add(framesGroup);
+
+  return startIndex + totalFrames;
 }
 
-/* =========================================================
-   FALLBACK SI FALLA UNA LETRA
-   ========================================================= */
-
-function addFramesOnFallbackVolume(letterGroup) {
+function addFramesOnFallbackVolume(letterGroup, startIndex) {
   const framesGroup = new THREE.Group();
   framesGroup.name = "fallback-frames-" + letterGroup.name;
 
@@ -1039,12 +930,11 @@ function addFramesOnFallbackVolume(letterGroup) {
     }
   }
 
-  const totalFrames = MODO_DEMO_RELLENAR_PALABRA
-    ? slots.length
-    : Math.min(slots.length, memories.length);
+  const remainingMemories = Math.max(0, memories.length - startIndex);
+  const totalFrames = Math.min(slots.length, remainingMemories);
 
   for (let i = 0; i < totalFrames; i++) {
-    const memory = memories[i % memories.length];
+    const memory = memories[startIndex + i];
     const slot = slots[i];
     const frame = createFrame(memory);
 
@@ -1063,10 +953,47 @@ function addFramesOnFallbackVolume(letterGroup) {
   }
 
   letterGroup.add(framesGroup);
+
+  return startIndex + totalFrames;
 }
-/* =========================================================
+
+function construirFramesProgresivos() {
+  if (framesConstruidos) {
+    return;
+  }
+
+  if (loadedLetters.length !== letterFiles.length) {
+    return;
+  }
+
+  framesConstruidos = true;
+
+  const orderedLetters = loadedLetters
+    .slice()
+    .sort((a, b) => a.order - b.order);
+
+  let memoryIndex = 0;
+
+  orderedLetters.forEach(item => {
+    if (memoryIndex >= memories.length) {
+      return;
+    }
+
+    if (item.structure) {
+      memoryIndex = addFramesOn3DStructure(
+        item.group,
+        item.structure,
+        memoryIndex
+      );
+    } else {
+      memoryIndex = addFramesOnFallbackVolume(item.group, memoryIndex);
+    }
+  });
+}
+
+/* =========================
    CARGA DE LETRAS
-   ========================================================= */
+========================= */
 
 function createLetter(data, glbScene) {
   const letterGroup = new THREE.Group();
@@ -1078,23 +1005,18 @@ function createLetter(data, glbScene) {
   letterGroup.add(structure);
   memorialGroup.add(letterGroup);
 
-  letterGroup.updateWorldMatrix(true, true);
-  addFramesOn3DStructure(letterGroup, structure);
-
   loadedLetters.push({
     order: data.order,
-    group: letterGroup
+    group: letterGroup,
+    structure
   });
 
   arrangeWord();
 
   structure.visible = MOSTRAR_GUIA_LETRAS;
 
-  if (USAR_ESCENARIO_REFERENCIA) {
-    posicionarMemorialDentroDeSalaReferencia();
-  } else {
-    fitMemorialView();
-  }
+  posicionarMemorialDentroDeSalaReferencia();
+  construirFramesProgresivos();
 }
 
 function createFallbackLetter(data) {
@@ -1117,20 +1039,16 @@ function createFallbackLetter(data) {
   letterGroup.add(fallbackStructure);
   memorialGroup.add(letterGroup);
 
-  addFramesOnFallbackVolume(letterGroup);
-
   loadedLetters.push({
     order: data.order,
-    group: letterGroup
+    group: letterGroup,
+    structure: null
   });
 
   arrangeWord();
 
-  if (USAR_ESCENARIO_REFERENCIA) {
-    posicionarMemorialDentroDeSalaReferencia();
-  } else {
-    fitMemorialView();
-  }
+  posicionarMemorialDentroDeSalaReferencia();
+  construirFramesProgresivos();
 }
 
 function arrangeWord() {
@@ -1167,12 +1085,9 @@ function loadLetters() {
   });
 }
 
-loadBackgroundModel();
-loadLetters();
-
-/* =========================================================
-   CAMARA
-   ========================================================= */
+/* =========================
+   BOTONES
+========================= */
 
 function fitMemorialView() {
   controls.target.copy(OBJETIVO_CAMARA_INICIAL);
@@ -1190,33 +1105,33 @@ function zoomCamera(factor) {
   controls.update();
 }
 
-document.getElementById("fullWordButton").addEventListener("click", () => {
-  if (USAR_ESCENARIO_REFERENCIA) {
-    posicionarMemorialDentroDeSalaReferencia();
-  } else {
-    fitMemorialView();
+function addSafeClick(id, callback) {
+  const element = document.getElementById(id);
+
+  if (element) {
+    element.addEventListener("click", callback);
   }
+}
+
+addSafeClick("fullWordButton", () => {
+  posicionarMemorialDentroDeSalaReferencia();
 });
 
-document.getElementById("zoomIn").addEventListener("click", () => {
+addSafeClick("zoomIn", () => {
   zoomCamera(0.9);
 });
 
-document.getElementById("zoomOut").addEventListener("click", () => {
+addSafeClick("zoomOut", () => {
   zoomCamera(1.1);
 });
 
-document.getElementById("resetView").addEventListener("click", () => {
-  if (USAR_ESCENARIO_REFERENCIA) {
-    posicionarMemorialDentroDeSalaReferencia();
-  } else {
-    fitMemorialView();
-  }
+addSafeClick("resetView", () => {
+  posicionarMemorialDentroDeSalaReferencia();
 });
 
-/* =========================================================
-   INTERACCION
-   ========================================================= */
+/* =========================
+   INTERACCIÓN
+========================= */
 
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -1242,27 +1157,40 @@ renderer.domElement.addEventListener("click", event => {
   }
 });
 
-/* =========================================================
+/* =========================
    MODAL
-   ========================================================= */
+========================= */
 
 function openModal(memory) {
   const modal = document.getElementById("memoryModal");
   const modalMedia = document.getElementById("modalMedia");
   const modalFiles = document.getElementById("modalFiles");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalMeta = document.getElementById("modalMeta");
+  const modalMessage = document.getElementById("modalMessage");
+
+  if (!modal || !modalMedia || !modalFiles) {
+    return;
+  }
 
   modal.classList.add("active");
 
   modalMedia.innerHTML = "";
   modalFiles.innerHTML = "";
 
-  document.getElementById("modalTitle").textContent = memory.name || "Memoria";
+  if (modalTitle) {
+    modalTitle.textContent = memory.name || "Memoria";
+  }
 
-  document.getElementById("modalMeta").textContent =
-    (memory.type || "Aporte") + " · Aporte: " + (memory.relation || "Proyecto");
+  if (modalMeta) {
+    modalMeta.textContent =
+      (memory.type || "Aporte") + " · Aporte: " + (memory.relation || "Proyecto");
+  }
 
-  document.getElementById("modalMessage").textContent =
-    memory.message || "Memoria aportada al proyecto.";
+  if (modalMessage) {
+    modalMessage.textContent =
+      memory.message || "Memoria aportada al proyecto.";
+  }
 
   const preview = memory.files && memory.files.length ? memory.files[0] : null;
 
@@ -1297,19 +1225,30 @@ function openModal(memory) {
   }
 }
 
-document.getElementById("closeModal").addEventListener("click", () => {
-  document.getElementById("memoryModal").classList.remove("active");
-});
+addSafeClick("closeModal", () => {
+  const modal = document.getElementById("memoryModal");
 
-document.getElementById("memoryModal").addEventListener("click", event => {
-  if (event.target.id === "memoryModal") {
-    document.getElementById("memoryModal").classList.remove("active");
+  if (modal) {
+    modal.classList.remove("active");
   }
 });
 
-/* =========================================================
-   ANIMACION Y RESIZE
-   ========================================================= */
+const memoryModal = document.getElementById("memoryModal");
+
+if (memoryModal) {
+  memoryModal.addEventListener("click", event => {
+    if (event.target.id === "memoryModal") {
+      memoryModal.classList.remove("active");
+    }
+  });
+}
+
+/* =========================
+   INICIO
+========================= */
+
+loadBackgroundModel();
+loadLetters();
 
 function animate() {
   requestAnimationFrame(animate);
@@ -1324,7 +1263,9 @@ function animate() {
 animate();
 
 window.addEventListener("resize", () => {
-  camera.aspect = container.clientWidth / container.clientHeight;
+  camera.aspect =
+    Math.max(container.clientWidth, 1) / Math.max(container.clientHeight, 1);
+
   camera.updateProjectionMatrix();
   renderer.setSize(container.clientWidth, container.clientHeight);
 });
