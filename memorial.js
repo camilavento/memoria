@@ -123,7 +123,7 @@ files: [
 {
 name: "referencia.jpg",
 type: "image",
-url: "[https://picsum.photos/400/520?1](https://picsum.photos/400/520?1)"
+url: "https://picsum.photos/400/520?1"
 }
 ]
 },
@@ -137,7 +137,7 @@ files: [
 {
 name: "referencia.jpg",
 type: "image",
-url: "[https://picsum.photos/400/520?2](https://picsum.photos/400/520?2)"
+url: "https://picsum.photos/400/520?2"
 }
 ]
 },
@@ -170,14 +170,12 @@ return [...defaultMemories];
 try {
 const parsed = JSON.parse(saved);
 
-```
 if (!Array.isArray(parsed) || parsed.length === 0) {
   localStorage.setItem("memories", JSON.stringify(defaultMemories));
   return [...defaultMemories];
 }
 
 return parsed;
-```
 
 } catch (error) {
 localStorage.setItem("memories", JSON.stringify(defaultMemories));
@@ -312,7 +310,6 @@ let currentY = y;
 words.forEach(word => {
 const testLine = line + word + " ";
 
-```
 if (ctx.measureText(testLine).width > maxWidth) {
   ctx.fillText(line, x, currentY);
   line = word + " ";
@@ -320,7 +317,6 @@ if (ctx.measureText(testLine).width > maxWidth) {
 } else {
   line = testLine;
 }
-```
 
 });
 
@@ -383,10 +379,8 @@ undefined,
 () => {}
 );
 
-```
 texture.colorSpace = THREE.SRGBColorSpace;
 return texture;
-```
 
 }
 
@@ -500,7 +494,6 @@ if (!child.isMesh) {
 return;
 }
 
-```
 child.castShadow = false;
 child.receiveShadow = false;
 
@@ -512,7 +505,6 @@ child.material = new THREE.MeshStandardMaterial({
   opacity: MOSTRAR_GUIA_LETRAS ? 0.13 : 0,
   depthWrite: false
 });
-```
 
 });
 }
@@ -586,7 +578,6 @@ if (!child.isMesh) {
 return;
 }
 
-```
 child.castShadow = false;
 child.receiveShadow = true;
 child.frustumCulled = false;
@@ -598,7 +589,6 @@ if (Array.isArray(child.material)) {
 } else if (child.material) {
   child.material = cloneBackgroundMaterial(child.material);
 }
-```
 
 });
 }
@@ -646,7 +636,6 @@ gltf => {
 backgroundModel = prepareBackgroundModel(gltf.scene);
 scene.add(backgroundModel);
 
-```
   fallbackFloor.visible = false;
   fallbackWall.visible = false;
 
@@ -659,7 +648,6 @@ error => {
   fallbackWall.visible = true;
   fitMemorialView();
 }
-```
 
 );
 }
@@ -691,21 +679,18 @@ slot.position.y * 78.233 +
 slot.position.z * 37.719
 ) * 43758.5453;
 
-```
   return {
     ...slot,
     sortValue: value - Math.floor(value)
   };
 })
 .sort((a, b) => a.sortValue - b.sortValue);
-```
 
 const selected = [];
 
 for (const slot of orderedSlots) {
 let tooClose = false;
 
-```
 for (const existing of selected) {
   if (slot.position.distanceTo(existing.position) < minDistance) {
     tooClose = true;
@@ -720,7 +705,6 @@ if (!tooClose) {
 if (selected.length >= maxSlots) {
   break;
 }
-```
 
 }
 
@@ -745,7 +729,6 @@ if (!child.isMesh || !child.geometry || !child.geometry.attributes.position) {
 return;
 }
 
-```
 const sampler = new MeshSurfaceSampler(child).build();
 
 const samplePosition = new THREE.Vector3();
@@ -782,7 +765,6 @@ for (let i = 0; i < 3200; i++) {
     normal: localNormal
   });
 }
-```
 
 });
 
@@ -839,7 +821,7 @@ function addFramesOn3DStructure(letterGroup, structureObject) {
 const slots = createSurfaceSlots(letterGroup, structureObject);
 
 const framesGroup = new THREE.Group();
-framesGroup.name = `frames-${letterGroup.name}`;
+framesGroup.name = frames-${letterGroup.name};
 
 const totalFrames = MODO_DEMO_RELLENAR_PALABRA
 ? slots.length
@@ -850,7 +832,6 @@ const memory = memories[i % memories.length];
 const slot = slots[i];
 const frame = createFrame(memory);
 
-```
 const position = slot.position.clone().add(
   slot.normal.clone().multiplyScalar(OFFSET_FRAME)
 );
@@ -867,7 +848,6 @@ quaternion.setFromUnitVectors(
 frame.quaternion.copy(quaternion);
 
 framesGroup.add(frame);
-```
 
 }
 
@@ -880,7 +860,7 @@ FALLBACK SI UNA LETRA FALLA
 
 function addFramesOnFallbackVolume(letterGroup) {
 const framesGroup = new THREE.Group();
-framesGroup.name = `fallback-frames-${letterGroup.name}`;
+framesGroup.name = fallback-frames-${letterGroup.name};
 
 const slots = [];
 const cols = 4;
@@ -892,7 +872,6 @@ for (let col = 0; col < cols; col++) {
 const x = (col - (cols - 1) / 2) * 0.42;
 const y = row * 0.56 + 0.18;
 
-```
   slots.push({
     position: new THREE.Vector3(x, y, depth),
     normal: new THREE.Vector3(0, 0, 1)
@@ -915,7 +894,6 @@ const y = row * 0.56 + 0.18;
     });
   }
 }
-```
 
 }
 
@@ -928,7 +906,6 @@ const memory = memories[i % memories.length];
 const slot = slots[i];
 const frame = createFrame(memory);
 
-```
 frame.position.copy(slot.position);
 
 const quaternion = new THREE.Quaternion();
@@ -941,7 +918,6 @@ quaternion.setFromUnitVectors(
 frame.quaternion.copy(quaternion);
 
 framesGroup.add(frame);
-```
 
 }
 
@@ -1015,7 +991,6 @@ const orderedLetters = [...loadedLetters].sort((a, b) => a.order - b.order);
 orderedLetters.forEach(item => {
 const data = letterFiles.find(letter => letter.order === item.order);
 
-```
 if (!data) {
   return;
 }
@@ -1023,7 +998,6 @@ if (!data) {
 item.group.position.x = data.x;
 item.group.position.y = 0;
 item.group.position.z = 0;
-```
 
 });
 }
@@ -1120,7 +1094,7 @@ modalFiles.innerHTML = "";
 document.getElementById("modalTitle").textContent = memory.name || "Memoria";
 
 document.getElementById("modalMeta").textContent =
-`${memory.type || "Aporte"} · Aporte: ${memory.relation || "Proyecto"}`;
+${memory.type || "Aporte"} · Aporte: ${memory.relation || "Proyecto"};
 
 document.getElementById("modalMessage").textContent =
 memory.message || "Memoria aportada al proyecto.";
@@ -1134,7 +1108,6 @@ img.src = preview.url;
 modalMedia.appendChild(img);
 }
 
-```
 if (preview.type === "video") {
   const video = document.createElement("video");
   video.src = preview.url;
@@ -1148,7 +1121,6 @@ if (preview.type === "audio") {
   audio.controls = true;
   modalMedia.appendChild(audio);
 }
-```
 
 }
 
