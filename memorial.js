@@ -4,6 +4,7 @@
 // Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
 // Movimiento corregido: navegación libre dentro de la sala, sin eje fijo central.
 // Buscador inferior conectado a data/detenidos-desaparecidos.json y a Supabase.
+// El buscador sugiere opciones desde la primera letra.
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -49,6 +50,7 @@ const WALL_TEXTURE_PATH = "textures/paredes.png";
 const FLOOR_TEXTURE_PATH = "textures/piso.png";
 
 const DETENIDOS_DB_PATH = "data/detenidos-desaparecidos.json";
+const MIN_CARACTERES_BUSQUEDA = 1;
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -246,7 +248,7 @@ function getPersonSearchText(person) {
 
 async function loadDetenidosDatabase() {
   try {
-    const response = await fetch(`${DETENIDOS_DB_PATH}?v=search-1`, {
+    const response = await fetch(`${DETENIDOS_DB_PATH}?v=one-letter-search`, {
       cache: "no-store"
     });
 
@@ -357,7 +359,7 @@ async function getUploadsForPerson(person) {
 function buscarPersonasDetenidas(query) {
   const normalizedQuery = normalizarTexto(query);
 
-  if (normalizedQuery.length < 2) {
+  if (normalizedQuery.length < MIN_CARACTERES_BUSQUEDA) {
     return [];
   }
 
@@ -371,7 +373,7 @@ function buscarPersonasDetenidas(query) {
       const searchText = getPersonSearchText(person);
       return words.every(word => searchText.includes(word));
     })
-    .slice(0, 8);
+    .slice(0, 10);
 }
 
 function setSearchStatus(message, className = "") {
@@ -485,17 +487,26 @@ function setupDetenidosSearch() {
 
   input.addEventListener("input", () => {
     const query = input.value;
+    const normalizedQuery = normalizarTexto(query);
     const matches = buscarPersonasDetenidas(query);
 
     renderSearchResults(matches);
 
-    if (normalizarTexto(query).length >= 2 && !matches.length) {
+    if (normalizedQuery.length >= MIN_CARACTERES_BUSQUEDA && !matches.length) {
       setSearchStatus("No encontré coincidencias en la base de datos.", "no-memory");
-    } else if (normalizarTexto(query).length < 2) {
+      return;
+    }
+
+    if (normalizedQuery.length < MIN_CARACTERES_BUSQUEDA) {
       setSearchStatus(
         "Selecciona una persona para revisar si tiene memorias subidas."
       );
+      return;
     }
+
+    setSearchStatus(
+      "Selecciona una opción de la lista para revisar si tiene memorias subidas."
+    );
   });
 
   input.addEventListener("keydown", event => {
