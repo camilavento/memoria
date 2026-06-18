@@ -2,9 +2,9 @@
 // Memorial 3D conectado a Supabase.
 // Lee memorias desde Supabase.
 // Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
+// Movimiento corregido: navegación libre dentro de la sala, sin eje fijo central.
 
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 
@@ -28,15 +28,21 @@ const COLOR_MURO_LATERAL = 0xffffff;
 const COLOR_SUELO = 0xffffff;
 const COLOR_TECHO = 0xffffff;
 
-const ALTURA_MINIMA_CAMARA = 1.25;
-const ALTURA_MINIMA_TARGET = 1.35;
+const ALTURA_MINIMA_CAMARA = 1.35;
+const ALTURA_MAXIMA_CAMARA = 12.2;
 
-const DISTANCIA_MINIMA_CAMARA = 10;
-const DISTANCIA_MAXIMA_CAMARA = 42;
+const DISTANCIA_SEGURIDAD_LETRAS = 1.65;
+const MARGEN_SEGURIDAD_SALA = 2.2;
+
+const VELOCIDAD_CAMINAR = 10.5;
+const VELOCIDAD_RAPIDA = 17;
+const VELOCIDAD_VERTICAL = 6.5;
+const PASO_ZOOM_CAMARA = 2.7;
+const SENSIBILIDAD_MOUSE = 0.0032;
 
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
-const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.8, 61);
-const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.75, -5.5);
+const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.4, 25.5);
+const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.9, -5.5);
 
 const WALL_TEXTURE_PATH = "textures/paredes.png";
 const FLOOR_TEXTURE_PATH = "textures/piso.png";
@@ -187,6 +193,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 camera.position.copy(POSICION_CAMARA_INICIAL);
+camera.rotation.order = "YXZ";
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -198,29 +205,35 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = false;
 renderer.setClearColor(COLOR_FONDO_GENERAL, 1);
+renderer.domElement.style.touchAction = "none";
 
 container.appendChild(renderer.domElement);
 
-const controls = new OrbitControls(camera, renderer.domElement);
+const clock = new THREE.Clock();
 
-controls.enableDamping = true;
-controls.dampingFactor = 0.075;
-controls.target.copy(OBJETIVO_CAMARA_INICIAL);
-controls.enablePan = false;
-controls.screenSpacePanning = false;
+const movementKeys = {
+  forward: false,
+  backward: false,
+  left: false,
+  right: false,
+  up: false,
+  down: false,
+  fast: false
+};
 
-controls.minDistance = DISTANCIA_MINIMA_CAMARA;
-controls.maxDistance = DISTANCIA_MAXIMA_CAMARA;
+const pointerState = {
+  isDragging: false,
+  lastX: 0,
+  lastY: 0,
+  dragDistance: 0,
+  ignoreNextClick: false
+};
 
-controls.minAzimuthAngle = -Infinity;
-controls.maxAzimuthAngle = Infinity;
-
-controls.minPolarAngle = 0.58;
-controls.maxPolarAngle = Math.PI / 2.18;
-
-controls.rotateSpeed = 0.72;
-controls.zoomSpeed = 0.85;
-controls.panSpeed = 0.65;
+let cameraYaw = 0;
+let cameraPitch = 0;
+let memorialCollisionBox = new THREE.Box3();
+let memorialCollisionReady = false;
+let vistaInicialAplicada = false;
 
 const memorialGroup = new THREE.Group();
 memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
@@ -495,82 +508,440 @@ function createReferenceRoom() {
 }
 
 /* =========================
-   CÁMARA
+   CÁMARA / MOVIMIENTO LIBRE
 ========================= */
 
-function limitarDistanciaCamara() {
-  const direccion = new THREE.Vector3();
-  direccion.subVectors(camera.position, controls.target);
-
-  const distanciaActual = direccion.length();
-
-  if (distanciaActual > DISTANCIA_MAXIMA_CAMARA) {
-    direccion.setLength(DISTANCIA_MAXIMA_CAMARA);
-    camera.position.copy(controls.target.clone().add(direccion));
-  }
-
-  if (distanciaActual < DISTANCIA_MINIMA_CAMARA) {
-    direccion.setLength(DISTANCIA_MINIMA_CAMARA);
-    camera.position.copy(controls.target.clone().add(direccion));
-  }
+function isModalOpen() {
+  const modal = document.getElementById("memoryModal");
+  return Boolean(modal && modal.classList.contains("active"));
 }
 
-function limitarAlturaCamara() {
-  if (camera.position.y < ALTURA_MINIMA_CAMARA) {
-    camera.position.y = ALTURA_MINIMA_CAMARA;
+function getForwardDirection(horizontalOnly = true) {
+  const direction = new THREE.Vector3();
+
+  camera.getWorldDirection(direction);
+
+  if (horizontalOnly) {
+    direction.y = 0;
+
+    if (direction.lengthSq() < 0.0001) {
+      direction.set(0, 0, -1);
+    }
+
+    direction.normalize();
   }
 
-  if (controls.target.y < ALTURA_MINIMA_TARGET) {
-    controls.target.y = ALTURA_MINIMA_TARGET;
-  }
-
-  const direccion = new THREE.Vector3();
-  direccion.subVectors(camera.position, controls.target);
-
-  if (direccion.y < -0.15) {
-    camera.position.y = controls.target.y + 0.15;
-  }
-
-  limitarDistanciaCamara();
+  return direction;
 }
 
-function posicionarMemorialDentroDeSalaReferencia() {
+function getRightDirection() {
+  const forward = getForwardDirection(true);
+  const right = new THREE.Vector3();
+
+  right.crossVectors(forward, camera.up).normalize();
+
+  return right;
+}
+
+function aplicarRotacionCamara() {
+  camera.rotation.x = cameraPitch;
+  camera.rotation.y = cameraYaw;
+  camera.rotation.z = 0;
+}
+
+function orientarCamaraHacia(target) {
+  camera.lookAt(target);
+
+  const euler = new THREE.Euler().setFromQuaternion(camera.quaternion, "YXZ");
+
+  cameraPitch = THREE.MathUtils.clamp(
+    euler.x,
+    -Math.PI / 2.7,
+    Math.PI / 2.7
+  );
+
+  cameraYaw = euler.y;
+
+  aplicarRotacionCamara();
+}
+
+function obtenerLimitesSala() {
   if (!referenceRoom) {
-    memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
-    memorialGroup.rotation.set(0, 0, 0);
+    return {
+      minX: -38,
+      maxX: 38,
+      minY: ALTURA_MINIMA_CAMARA,
+      maxY: ALTURA_MAXIMA_CAMARA,
+      minZ: -54,
+      maxZ: 35
+    };
+  }
+
+  const roomWidth = referenceRoom.userData.roomWidth;
+  const roomHeight = referenceRoom.userData.roomHeight;
+  const backZ = referenceRoom.userData.backZ;
+  const frontZ = referenceRoom.userData.frontZ;
+
+  return {
+    minX: -roomWidth / 2 + MARGEN_SEGURIDAD_SALA,
+    maxX: roomWidth / 2 - MARGEN_SEGURIDAD_SALA,
+    minY: ALTURA_MINIMA_CAMARA,
+    maxY: Math.min(roomHeight - 1.15, ALTURA_MAXIMA_CAMARA),
+    minZ: backZ + MARGEN_SEGURIDAD_SALA,
+    maxZ: frontZ - MARGEN_SEGURIDAD_SALA
+  };
+}
+
+function limitarPuntoALaSala(position) {
+  const bounds = obtenerLimitesSala();
+
+  position.x = THREE.MathUtils.clamp(position.x, bounds.minX, bounds.maxX);
+  position.y = THREE.MathUtils.clamp(position.y, bounds.minY, bounds.maxY);
+  position.z = THREE.MathUtils.clamp(position.z, bounds.minZ, bounds.maxZ);
+
+  return position;
+}
+
+function actualizarZonaColisionMemorial() {
+  memorialGroup.updateWorldMatrix(true, true);
+
+  const box = new THREE.Box3().setFromObject(memorialGroup);
+
+  if (box.isEmpty()) {
+    memorialCollisionReady = false;
     return;
   }
 
-  const roomDepth = referenceRoom.userData.roomDepth;
+  memorialCollisionBox = box.clone();
+  memorialCollisionBox.expandByScalar(DISTANCIA_SEGURIDAD_LETRAS);
+
+  memorialCollisionReady = true;
+}
+
+function puntoEntraEnLaPalabra(position) {
+  if (!memorialCollisionReady) {
+    return false;
+  }
+
+  return memorialCollisionBox.containsPoint(position);
+}
+
+function posicionPermitida(position) {
+  const clamped = limitarPuntoALaSala(position.clone());
+
+  if (clamped.distanceTo(position) > 0.001) {
+    return false;
+  }
+
+  return !puntoEntraEnLaPalabra(position);
+}
+
+function moverCamara(delta) {
+  if (delta.lengthSq() <= 0) {
+    return;
+  }
+
+  const start = camera.position.clone();
+  const wanted = limitarPuntoALaSala(start.clone().add(delta));
+
+  if (posicionPermitida(wanted)) {
+    camera.position.copy(wanted);
+    return;
+  }
+
+  const axisMoves = [
+    new THREE.Vector3(delta.x, 0, 0),
+    new THREE.Vector3(0, delta.y, 0),
+    new THREE.Vector3(0, 0, delta.z)
+  ];
+
+  axisMoves.forEach(axisDelta => {
+    if (axisDelta.lengthSq() <= 0) {
+      return;
+    }
+
+    const candidate = limitarPuntoALaSala(camera.position.clone().add(axisDelta));
+
+    if (posicionPermitida(candidate)) {
+      camera.position.copy(candidate);
+    }
+  });
+}
+
+function aplicarLimitesCamara() {
+  const candidate = limitarPuntoALaSala(camera.position.clone());
+
+  if (posicionPermitida(candidate)) {
+    camera.position.copy(candidate);
+    return;
+  }
+
+  const wordCenter = new THREE.Vector3();
+  memorialCollisionBox.getCenter(wordCenter);
+
+  const pushDirection = camera.position.clone().sub(wordCenter);
+  pushDirection.y = 0;
+
+  if (pushDirection.lengthSq() < 0.0001) {
+    pushDirection.set(0, 0, 1);
+  }
+
+  pushDirection.normalize();
+
+  for (let i = 0; i < 42; i++) {
+    const pushed = limitarPuntoALaSala(
+      camera.position.clone().add(pushDirection.clone().multiplyScalar(0.35))
+    );
+
+    if (posicionPermitida(pushed)) {
+      camera.position.copy(pushed);
+      return;
+    }
+
+    camera.position.copy(pushed);
+  }
+}
+
+function posicionarCamaraVistaCompleta() {
+  const roomCenterZ = referenceRoom
+    ? referenceRoom.userData.roomCenterZ
+    : -10;
+
+  const roomDepth = referenceRoom
+    ? referenceRoom.userData.roomDepth
+    : 94;
+
+  const frontZ = referenceRoom
+    ? referenceRoom.userData.frontZ
+    : 37;
+
+  const wordZ = referenceRoom
+    ? roomCenterZ + 4.8
+    : POSICION_LETRAS_INICIAL.z;
+
+  const target = new THREE.Vector3(0, 2.9, wordZ);
+
+  const initialZ = Math.min(
+    frontZ - MARGEN_SEGURIDAD_SALA - 4,
+    wordZ + roomDepth * 0.33
+  );
+
+  camera.position.set(0, 5.4, initialZ);
+  limitarPuntoALaSala(camera.position);
+  orientarCamaraHacia(target);
+  aplicarLimitesCamara();
+}
+
+function posicionarMemorialDentroDeSalaReferencia(options = {}) {
+  const { resetCamera = false } = options;
+
+  if (!referenceRoom) {
+    memorialGroup.position.copy(POSICION_LETRAS_INICIAL);
+    memorialGroup.rotation.set(0, 0, 0);
+
+    actualizarZonaColisionMemorial();
+
+    if (resetCamera || !vistaInicialAplicada) {
+      camera.position.copy(POSICION_CAMARA_INICIAL);
+      orientarCamaraHacia(OBJETIVO_CAMARA_INICIAL);
+      vistaInicialAplicada = true;
+    }
+
+    return;
+  }
+
   const roomCenterZ = referenceRoom.userData.roomCenterZ;
 
   memorialGroup.position.set(0, 1.48, roomCenterZ + 4.8);
   memorialGroup.rotation.set(0, 0, 0);
 
-  camera.position.set(0, 5.8, roomCenterZ + roomDepth / 2 + 24);
-  controls.target.set(0, 2.9, roomCenterZ + 4.8);
+  actualizarZonaColisionMemorial();
 
-  controls.enablePan = false;
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.075;
-
-  controls.minDistance = DISTANCIA_MINIMA_CAMARA;
-  controls.maxDistance = DISTANCIA_MAXIMA_CAMARA;
-
-  controls.minAzimuthAngle = -Infinity;
-  controls.maxAzimuthAngle = Infinity;
-
-  controls.minPolarAngle = 0.58;
-  controls.maxPolarAngle = Math.PI / 2.18;
-
-  limitarAlturaCamara();
-  controls.update();
+  if (resetCamera || !vistaInicialAplicada) {
+    posicionarCamaraVistaCompleta();
+    vistaInicialAplicada = true;
+  } else {
+    aplicarLimitesCamara();
+  }
 }
+
+function updateKeyboardMovement(deltaTime) {
+  if (isModalOpen()) {
+    return;
+  }
+
+  const speed = movementKeys.fast ? VELOCIDAD_RAPIDA : VELOCIDAD_CAMINAR;
+  const forward = getForwardDirection(true);
+  const right = getRightDirection();
+  const movement = new THREE.Vector3();
+
+  if (movementKeys.forward) {
+    movement.add(forward);
+  }
+
+  if (movementKeys.backward) {
+    movement.sub(forward);
+  }
+
+  if (movementKeys.right) {
+    movement.add(right);
+  }
+
+  if (movementKeys.left) {
+    movement.sub(right);
+  }
+
+  if (movement.lengthSq() > 0) {
+    movement.normalize().multiplyScalar(speed * deltaTime);
+  }
+
+  if (movementKeys.up) {
+    movement.y += VELOCIDAD_VERTICAL * deltaTime;
+  }
+
+  if (movementKeys.down) {
+    movement.y -= VELOCIDAD_VERTICAL * deltaTime;
+  }
+
+  moverCamara(movement);
+}
+
+function keyToMovement(key, isPressed) {
+  const normalizedKey = key.toLowerCase();
+
+  if (normalizedKey === "w" || key === "ArrowUp") {
+    movementKeys.forward = isPressed;
+  }
+
+  if (normalizedKey === "s" || key === "ArrowDown") {
+    movementKeys.backward = isPressed;
+  }
+
+  if (normalizedKey === "a" || key === "ArrowLeft") {
+    movementKeys.left = isPressed;
+  }
+
+  if (normalizedKey === "d" || key === "ArrowRight") {
+    movementKeys.right = isPressed;
+  }
+
+  if (normalizedKey === "e") {
+    movementKeys.up = isPressed;
+  }
+
+  if (normalizedKey === "q") {
+    movementKeys.down = isPressed;
+  }
+
+  if (key === "Shift") {
+    movementKeys.fast = isPressed;
+  }
+}
+
+function setupCameraInteraction() {
+  orientarCamaraHacia(OBJETIVO_CAMARA_INICIAL);
+
+  window.addEventListener("keydown", event => {
+    if (isModalOpen()) {
+      return;
+    }
+
+    keyToMovement(event.key, true);
+
+    if (
+      ["w", "a", "s", "d", "q", "e", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Shift"]
+        .includes(event.key)
+    ) {
+      event.preventDefault();
+    }
+  });
+
+  window.addEventListener("keyup", event => {
+    keyToMovement(event.key, false);
+  });
+
+  renderer.domElement.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || isModalOpen()) {
+      return;
+    }
+
+    pointerState.isDragging = true;
+    pointerState.lastX = event.clientX;
+    pointerState.lastY = event.clientY;
+    pointerState.dragDistance = 0;
+
+    renderer.domElement.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+
+  renderer.domElement.addEventListener("pointermove", event => {
+    if (!pointerState.isDragging) {
+      return;
+    }
+
+    const deltaX = event.clientX - pointerState.lastX;
+    const deltaY = event.clientY - pointerState.lastY;
+
+    pointerState.lastX = event.clientX;
+    pointerState.lastY = event.clientY;
+    pointerState.dragDistance += Math.abs(deltaX) + Math.abs(deltaY);
+
+    cameraYaw -= deltaX * SENSIBILIDAD_MOUSE;
+    cameraPitch -= deltaY * SENSIBILIDAD_MOUSE;
+
+    cameraPitch = THREE.MathUtils.clamp(
+      cameraPitch,
+      -Math.PI / 2.7,
+      Math.PI / 2.7
+    );
+
+    aplicarRotacionCamara();
+    event.preventDefault();
+  });
+
+  renderer.domElement.addEventListener("pointerup", event => {
+    if (!pointerState.isDragging) {
+      return;
+    }
+
+    pointerState.isDragging = false;
+
+    if (pointerState.dragDistance > 5) {
+      pointerState.ignoreNextClick = true;
+    }
+
+    renderer.domElement.releasePointerCapture(event.pointerId);
+  });
+
+  renderer.domElement.addEventListener("pointerleave", () => {
+    pointerState.isDragging = false;
+  });
+
+  renderer.domElement.addEventListener(
+    "wheel",
+    event => {
+      if (isModalOpen()) {
+        return;
+      }
+
+      const direction = getForwardDirection(true);
+      const amount = event.deltaY < 0
+        ? PASO_ZOOM_CAMARA
+        : -PASO_ZOOM_CAMARA;
+
+      moverCamara(direction.multiplyScalar(amount));
+      event.preventDefault();
+    },
+    { passive: false }
+  );
+}
+
+setupCameraInteraction();
 
 function loadBackgroundModel() {
   referenceRoom = createReferenceRoom();
   scene.add(referenceRoom);
-  posicionarMemorialDentroDeSalaReferencia();
+  posicionarMemorialDentroDeSalaReferencia({ resetCamera: true });
 }
 
 /* =========================
@@ -1104,6 +1475,8 @@ function construirFramesProgresivos() {
       memoryIndex = addFramesOnFallbackVolume(item.group, memoryIndex);
     }
   });
+
+  actualizarZonaColisionMemorial();
 }
 
 /* =========================
@@ -1130,7 +1503,7 @@ function createLetter(data, glbScene) {
 
   structure.visible = MOSTRAR_GUIA_LETRAS;
 
-  posicionarMemorialDentroDeSalaReferencia();
+  posicionarMemorialDentroDeSalaReferencia({ resetCamera: false });
   construirFramesProgresivos();
 }
 
@@ -1161,7 +1534,7 @@ function createFallbackLetter(data) {
   });
 
   arrangeWord();
-  posicionarMemorialDentroDeSalaReferencia();
+  posicionarMemorialDentroDeSalaReferencia({ resetCamera: false });
   construirFramesProgresivos();
 }
 
@@ -1203,23 +1576,11 @@ function loadLetters() {
    BOTONES
 ========================= */
 
-function zoomCamera(factor) {
-  const direction = new THREE.Vector3();
-  direction.subVectors(camera.position, controls.target);
-  direction.multiplyScalar(factor);
+function zoomCamera(directionMultiplier) {
+  const direction = getForwardDirection(true);
 
-  const newDistance = THREE.MathUtils.clamp(
-    direction.length(),
-    DISTANCIA_MINIMA_CAMARA,
-    DISTANCIA_MAXIMA_CAMARA
-  );
-
-  direction.setLength(newDistance);
-
-  camera.position.copy(controls.target.clone().add(direction));
-
-  limitarAlturaCamara();
-  controls.update();
+  moverCamara(direction.multiplyScalar(PASO_ZOOM_CAMARA * directionMultiplier));
+  aplicarLimitesCamara();
 }
 
 function addSafeClick(id, callback) {
@@ -1231,19 +1592,19 @@ function addSafeClick(id, callback) {
 }
 
 addSafeClick("fullWordButton", () => {
-  posicionarMemorialDentroDeSalaReferencia();
+  posicionarMemorialDentroDeSalaReferencia({ resetCamera: true });
 });
 
 addSafeClick("zoomIn", () => {
-  zoomCamera(0.9);
+  zoomCamera(1);
 });
 
 addSafeClick("zoomOut", () => {
-  zoomCamera(1.1);
+  zoomCamera(-1);
 });
 
 addSafeClick("resetView", () => {
-  posicionarMemorialDentroDeSalaReferencia();
+  posicionarMemorialDentroDeSalaReferencia({ resetCamera: true });
 });
 
 /* =========================
@@ -1254,6 +1615,11 @@ const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
 renderer.domElement.addEventListener("click", event => {
+  if (pointerState.ignoreNextClick) {
+    pointerState.ignoreNextClick = false;
+    return;
+  }
+
   const rect = renderer.domElement.getBoundingClientRect();
 
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1395,9 +1761,10 @@ startMemorial();
 function animate() {
   requestAnimationFrame(animate);
 
-  limitarAlturaCamara();
-  controls.update();
-  limitarAlturaCamara();
+  const deltaTime = Math.min(clock.getDelta(), 0.05);
+
+  updateKeyboardMovement(deltaTime);
+  aplicarLimitesCamara();
 
   renderer.render(scene, camera);
 }
