@@ -6,7 +6,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Memorial 3D | Proyecto MEMORIA</title>
-  <link rel="stylesheet" href="style.css">
+
+  <!-- Forzar carga nueva del CSS -->
+  <link rel="stylesheet" href="style.css?v=bottom-nav-final">
 
   <script type="importmap">
     {
@@ -20,11 +22,6 @@
 
 <body class="memorial-page">
 
-  <aside class="side-nav">
-    <a href="aportar.html">Construir memoria</a>
-    <a href="proyecto.html">Sobre el proyecto</a>
-  </aside>
-
   <main class="memorial-main">
     <header class="viewer-toolbar">
       <button id="zoomOut" type="button">−</button>
@@ -35,6 +32,11 @@
 
     <div id="threeContainer" class="three-container"></div>
   </main>
+
+  <nav class="bottom-nav">
+    <a href="aportar.html">Construir memoria</a>
+    <a href="proyecto.html">Sobre el proyecto</a>
+  </nav>
 
   <section id="memoryModal" class="modal">
     <div class="modal-content">
@@ -49,6 +51,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script type="module" src="memorial.js?v=free-camera-6"></script>
+  <script type="module" src="memorial.js?v=free-camera-7"></script>
 </body>
 </html>

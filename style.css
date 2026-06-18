@@ -66,7 +66,6 @@ button{
   font-size:1rem;
 }
 
-/* Oculta los links superiores del lobby */
 .lobby-links{
   display:none !important;
   visibility:hidden !important;
@@ -132,71 +131,69 @@ button{
 /* MEMORIAL */
 
 .memorial-page{
-  min-height:100vh;
-  display:block;
-  background:#000000;
-  color:white;
-  overflow:hidden;
+  width:100vw !important;
+  min-height:100vh !important;
+  display:block !important;
+  grid-template-columns:none !important;
+  background:#000000 !important;
+  color:white !important;
+  overflow:hidden !important;
 }
 
-/* Barra horizontal inferior */
-.memorial-page .side-nav{
-  position:fixed;
-  left:0;
-  bottom:0;
-  width:100vw;
-  height:64px;
-  min-height:0;
-  padding:0 24px;
-  background:#000000;
-  backdrop-filter:none;
-  display:flex;
-  flex-direction:row;
-  align-items:center;
-  justify-content:center;
-  gap:56px;
-  z-index:30;
-  overflow:hidden;
-}
-
-/* Oculta Proyecto MEMORIA si existiera en otra versión */
-.memorial-page .side-brand{
+/* Apaga cualquier barra lateral antigua */
+.memorial-page .side-nav,
+.memorial-page aside.side-nav{
   display:none !important;
+  visibility:hidden !important;
+  opacity:0 !important;
+  pointer-events:none !important;
 }
 
-/* Oculta Inicio si existiera en otra versión */
-.memorial-page .side-nav a[href="index.html"]{
-  display:none !important;
+/* Barra horizontal inferior definitiva */
+.bottom-nav{
+  position:fixed !important;
+  left:0 !important;
+  bottom:0 !important;
+  width:100vw !important;
+  height:64px !important;
+  padding:0 32px !important;
+  background:#000000 !important;
+  color:#ffffff !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:64px !important;
+  z-index:999 !important;
+  border:none !important;
+  box-shadow:none !important;
 }
 
-/* Oculta Palabra completa si existiera en otra versión */
-.memorial-page .side-nav button,
-.memorial-page .side-nav #fullWordButton{
-  display:none !important;
+.bottom-nav a{
+  display:inline-block !important;
+  width:auto !important;
+  padding:0 !important;
+  margin:0 !important;
+  background:transparent !important;
+  color:#ffffff !important;
+  font-family:Georgia, "Times New Roman", serif !important;
+  font-size:15px !important;
+  line-height:1 !important;
+  text-align:center !important;
+  white-space:nowrap !important;
 }
 
-.memorial-page .side-nav a{
-  width:auto;
-  padding:0;
-  border-radius:0;
-  background:transparent;
-  color:white;
-  text-align:center;
-  font-size:15px;
-  line-height:1;
-  white-space:nowrap;
-}
-
-.memorial-page .side-nav a:hover{
-  background:transparent;
-  opacity:0.72;
+.bottom-nav a:hover{
+  opacity:0.7 !important;
 }
 
 .memorial-main{
-  position:relative;
-  width:100vw;
-  min-height:100vh;
-  background:#000000;
+  position:relative !important;
+  width:100vw !important;
+  min-height:100vh !important;
+  margin:0 !important;
+  padding:0 !important;
+  background:#000000 !important;
 }
 
 .viewer-toolbar{
@@ -230,13 +227,13 @@ button{
 }
 
 .three-container{
-  width:100vw;
-  height:100vh;
+  width:100vw !important;
+  height:100vh !important;
   background:
     linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.42)),
     radial-gradient(circle at 74% 62%, rgba(107,95,174,0.18), transparent 26%),
     radial-gradient(circle at 16% 80%, rgba(242,184,116,0.12), transparent 24%),
-    #000000;
+    #000000 !important;
 }
 
 /* CONTENT */
@@ -349,7 +346,7 @@ textarea{
   display:none;
   justify-content:center;
   align-items:center;
-  z-index:100;
+  z-index:1000;
   background:rgba(0,0,0,0.72);
   padding:24px;
 }
@@ -418,14 +415,14 @@ textarea{
 /* RESPONSIVE */
 
 @media(max-width:900px){
-  .memorial-page .side-nav{
-    height:60px;
-    padding:0 18px;
-    gap:28px;
+  .bottom-nav{
+    height:60px !important;
+    padding:0 18px !important;
+    gap:28px !important;
   }
 
-  .memorial-page .side-nav a{
-    font-size:14px;
+  .bottom-nav a{
+    font-size:14px !important;
   }
 
   .viewer-toolbar{
