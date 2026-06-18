@@ -34,7 +34,7 @@
       <button id="zoomOut" type="button">−</button>
       <button id="zoomIn" type="button">+</button>
       <button id="resetView" type="button">Reset</button>
-      <span>Arrastra para girar · Rueda para acercar · Click en un frame</span>
+      <span>Arrastra para mirar · WASD/flechas para moverte · Rueda para avanzar o retroceder · Click en un frame</span>
     </header>
 
     <div id="threeContainer" class="three-container"></div>
@@ -53,6 +53,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script type="module" src="memorial.js"></script>
+
+  <!-- IMPORTANTE: este ?v=free-camera-2 obliga a GitHub Pages a cargar el JS nuevo -->
+  <script type="module" src="memorial.js?v=free-camera-2"></script>
 </body>
 </html>
