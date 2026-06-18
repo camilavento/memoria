@@ -4,7 +4,7 @@
 // Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
 // Movimiento corregido: navegación libre dentro de la sala, sin eje fijo central.
 // Buscador inferior conectado a data/detenidos-desaparecidos.json y a Supabase.
-// El buscador sugiere opciones desde la primera letra.
+// El buscador sugiere opciones desde la primera letra y destaca coincidencias en café.
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -51,6 +51,8 @@ const FLOOR_TEXTURE_PATH = "textures/piso.png";
 
 const DETENIDOS_DB_PATH = "data/detenidos-desaparecidos.json";
 const MIN_CARACTERES_BUSQUEDA = 1;
+
+const COLOR_RESALTADO_BUSQUEDA = "#9b6a3a";
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -194,6 +196,130 @@ function normalizarTexto(value) {
     .trim();
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function crearMapaNormalizado(textoOriginal) {
+  const normalizedChars = [];
+  const originalIndexMap = [];
+
+  Array.from(String(textoOriginal || "")).forEach((char, index) => {
+    const normalizedChar = char
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    Array.from(normalizedChar).forEach(outputChar => {
+      normalizedChars.push(outputChar);
+      originalIndexMap.push(index);
+    });
+  });
+
+  return {
+    normalizedText: normalizedChars.join(""),
+    originalIndexMap
+  };
+}
+
+function mergeRanges(ranges) {
+  if (!ranges.length) {
+    return [];
+  }
+
+  const sortedRanges = ranges
+    .slice()
+    .sort((a, b) => a.start - b.start || a.end - b.end);
+
+  const merged = [sortedRanges[0]];
+
+  for (let i = 1; i < sortedRanges.length; i++) {
+    const current = sortedRanges[i];
+    const previous = merged[merged.length - 1];
+
+    if (current.start <= previous.end) {
+      previous.end = Math.max(previous.end, current.end);
+    } else {
+      merged.push(current);
+    }
+  }
+
+  return merged;
+}
+
+function resaltarCoincidencias(textoOriginal, query) {
+  const text = String(textoOriginal || "");
+  const normalizedQuery = normalizarTexto(query);
+
+  if (!normalizedQuery) {
+    return escapeHtml(text);
+  }
+
+  const words = normalizedQuery
+    .split(/\s+/)
+    .map(word => word.trim())
+    .filter(Boolean);
+
+  if (!words.length) {
+    return escapeHtml(text);
+  }
+
+  const { normalizedText, originalIndexMap } = crearMapaNormalizado(text);
+  const ranges = [];
+
+  words.forEach(word => {
+    let searchIndex = 0;
+
+    while (searchIndex < normalizedText.length) {
+      const foundIndex = normalizedText.indexOf(word, searchIndex);
+
+      if (foundIndex === -1) {
+        break;
+      }
+
+      const originalStart = originalIndexMap[foundIndex];
+      const originalEnd = originalIndexMap[foundIndex + word.length - 1] + 1;
+
+      if (
+        Number.isInteger(originalStart) &&
+        Number.isInteger(originalEnd) &&
+        originalEnd > originalStart
+      ) {
+        ranges.push({
+          start: originalStart,
+          end: originalEnd
+        });
+      }
+
+      searchIndex = foundIndex + Math.max(word.length, 1);
+    }
+  });
+
+  const mergedRanges = mergeRanges(ranges);
+
+  if (!mergedRanges.length) {
+    return escapeHtml(text);
+  }
+
+  let html = "";
+  let cursor = 0;
+
+  mergedRanges.forEach(range => {
+    html += escapeHtml(text.slice(cursor, range.start));
+    html += `<span style="color:${COLOR_RESALTADO_BUSQUEDA}; font-weight:700;">${escapeHtml(text.slice(range.start, range.end))}</span>`;
+    cursor = range.end;
+  });
+
+  html += escapeHtml(text.slice(cursor));
+
+  return html;
+}
+
 function getPersonId(person) {
   return String(
     person?.id ||
@@ -248,7 +374,7 @@ function getPersonSearchText(person) {
 
 async function loadDetenidosDatabase() {
   try {
-    const response = await fetch(`${DETENIDOS_DB_PATH}?v=one-letter-search`, {
+    const response = await fetch(`${DETENIDOS_DB_PATH}?v=highlight-search-1`, {
       cache: "no-store"
     });
 
@@ -398,7 +524,7 @@ function clearSearchResults() {
   results.classList.remove("active");
 }
 
-function renderSearchResults(personas) {
+function renderSearchResults(personas, query = "") {
   const results = document.getElementById("detainedSearchResults");
 
   if (!results) {
@@ -419,11 +545,14 @@ function renderSearchResults(personas) {
 
     const name = document.createElement("span");
     name.className = "detained-result-name";
-    name.textContent = getPersonName(person);
+    name.innerHTML = resaltarCoincidencias(getPersonName(person), query);
 
     const meta = document.createElement("span");
     meta.className = "detained-result-meta";
-    meta.textContent = getPersonMeta(person) || "Sin información complementaria";
+    meta.innerHTML = resaltarCoincidencias(
+      getPersonMeta(person) || "Sin información complementaria",
+      query
+    );
 
     button.appendChild(name);
     button.appendChild(meta);
@@ -490,7 +619,7 @@ function setupDetenidosSearch() {
     const normalizedQuery = normalizarTexto(query);
     const matches = buscarPersonasDetenidas(query);
 
-    renderSearchResults(matches);
+    renderSearchResults(matches, query);
 
     if (normalizedQuery.length >= MIN_CARACTERES_BUSQUEDA && !matches.length) {
       setSearchStatus("No encontré coincidencias en la base de datos.", "no-memory");
@@ -524,7 +653,7 @@ function setupDetenidosSearch() {
 
   input.addEventListener("focus", () => {
     const matches = buscarPersonasDetenidas(input.value);
-    renderSearchResults(matches);
+    renderSearchResults(matches, input.value);
   });
 
   document.addEventListener("click", event => {
