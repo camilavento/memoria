@@ -134,42 +134,59 @@ button{
 .memorial-page{
   min-height:100vh;
   display:grid;
-  grid-template-columns:150px 1fr;
+  grid-template-columns:82px 1fr;
   background:#15120f;
   color:white;
 }
 
-.side-nav{
-  min-height:100vh;
-  padding:28px 16px;
-  background:rgba(0,0,0,0.46);
+.memorial-page .side-nav{
+  width:82px;
+  height:calc(100vh - 118px);
+  min-height:0;
+  margin-top:118px;
+  padding:24px 8px;
+  background:rgba(0,0,0,0.58);
   backdrop-filter:blur(14px);
   display:flex;
   flex-direction:column;
-  gap:12px;
+  align-items:center;
+  justify-content:flex-start;
+  gap:34px;
   z-index:10;
+  overflow:hidden;
 }
 
-.side-brand{
-  text-transform:uppercase;
-  line-height:0.95;
-  font-size:1rem;
-  margin-bottom:26px;
+/* Oculta Proyecto MEMORIA */
+.memorial-page .side-brand{
+  display:none !important;
 }
 
-.side-nav a,
-.side-nav button{
+/* Oculta Inicio */
+.memorial-page .side-nav a[href="index.html"]{
+  display:none !important;
+}
+
+/* Oculta Palabra completa */
+.memorial-page .side-nav button,
+.memorial-page .side-nav #fullWordButton{
+  display:none !important;
+}
+
+.memorial-page .side-nav a{
   width:100%;
-  padding:12px;
-  border-radius:14px;
+  padding:0;
+  border-radius:0;
   background:transparent;
   color:white;
-  text-align:left;
+  text-align:center;
+  font-size:14px;
+  line-height:1.05;
+  word-break:normal;
 }
 
-.side-nav a:hover,
-.side-nav button:hover{
-  background:rgba(255,255,255,0.12);
+.memorial-page .side-nav a:hover{
+  background:transparent;
+  opacity:0.72;
 }
 
 .memorial-main{
@@ -400,9 +417,15 @@ textarea{
     grid-template-columns:1fr;
   }
 
-  .side-nav{
+  .memorial-page .side-nav{
+    width:100%;
+    height:auto;
     min-height:auto;
+    margin-top:0;
+    padding:12px 16px;
     flex-direction:row;
+    justify-content:center;
+    gap:24px;
     overflow:auto;
   }
 
