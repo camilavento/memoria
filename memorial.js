@@ -4,7 +4,8 @@
 // Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
 // Movimiento corregido: navegación libre dentro de la sala, sin eje fijo central.
 // Buscador inferior conectado a data/detenidos-desaparecidos.json y a Supabase.
-// El buscador sugiere opciones desde la primera letra y destaca coincidencias en café.
+// El buscador sugiere opciones desde la primera letra, destaca coincidencias en café
+// y lleva la cámara directamente al frame/imagen de la persona seleccionada.
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -41,6 +42,9 @@ const VELOCIDAD_RAPIDA = 17;
 const VELOCIDAD_VERTICAL = 6.5;
 const PASO_ZOOM_CAMARA = 2.7;
 const SENSIBILIDAD_MOUSE = 0.0032;
+
+const DISTANCIA_FOCO_FRAME = 4.8;
+const ALTURA_EXTRA_FOCO_FRAME = 0.45;
 
 const POSICION_LETRAS_INICIAL = new THREE.Vector3(0, 1.48, -5.5);
 const POSICION_CAMARA_INICIAL = new THREE.Vector3(0, 5.4, 25.5);
@@ -374,7 +378,7 @@ function getPersonSearchText(person) {
 
 async function loadDetenidosDatabase() {
   try {
-    const response = await fetch(`${DETENIDOS_DB_PATH}?v=highlight-search-1`, {
+    const response = await fetch(`${DETENIDOS_DB_PATH}?v=focus-frame-1`, {
       cache: "no-store"
     });
 
@@ -567,6 +571,142 @@ function renderSearchResults(personas, query = "") {
   results.classList.add("active");
 }
 
+function sleep(ms) {
+  return new Promise(resolve => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function getFrameObjectForPerson(person) {
+  let foundFrameObject = null;
+
+  memorialGroup.traverse(object => {
+    if (foundFrameObject) {
+      return;
+    }
+
+    if (!object.userData || !object.userData.isFrame || !object.userData.memory) {
+      return;
+    }
+
+    if (memoryMatchesPerson(object.userData.memory, person)) {
+      foundFrameObject = object;
+    }
+  });
+
+  return foundFrameObject;
+}
+
+function getFrameCenter(frameObject) {
+  frameObject.updateWorldMatrix(true, true);
+
+  const box = new THREE.Box3().setFromObject(frameObject);
+  const center = new THREE.Vector3();
+
+  if (!box.isEmpty()) {
+    box.getCenter(center);
+    return center;
+  }
+
+  frameObject.getWorldPosition(center);
+  return center;
+}
+
+function getFrameNormal(frameObject, frameCenter) {
+  const quaternion = new THREE.Quaternion();
+  frameObject.getWorldQuaternion(quaternion);
+
+  const normal = new THREE.Vector3(0, 0, 1)
+    .applyQuaternion(quaternion)
+    .normalize();
+
+  if (normal.lengthSq() > 0.0001) {
+    return normal;
+  }
+
+  const fallback = camera.position.clone().sub(frameCenter);
+
+  if (fallback.lengthSq() < 0.0001) {
+    fallback.set(0, 0, 1);
+  }
+
+  return fallback.normalize();
+}
+
+function getSafeFocusPosition(frameCenter, frameNormal) {
+  const distances = [
+    DISTANCIA_FOCO_FRAME,
+    DISTANCIA_FOCO_FRAME + 1.4,
+    DISTANCIA_FOCO_FRAME + 2.8,
+    DISTANCIA_FOCO_FRAME + 4.2,
+    DISTANCIA_FOCO_FRAME + 6
+  ];
+
+  for (const distance of distances) {
+    const candidate = frameCenter
+      .clone()
+      .add(frameNormal.clone().multiplyScalar(distance));
+
+    candidate.y = THREE.MathUtils.clamp(
+      frameCenter.y + ALTURA_EXTRA_FOCO_FRAME,
+      ALTURA_MINIMA_CAMARA,
+      ALTURA_MAXIMA_CAMARA
+    );
+
+    limitarPuntoALaSala(candidate);
+
+    if (!puntoEntraEnLaPalabra(candidate)) {
+      return candidate;
+    }
+  }
+
+  const fallback = frameCenter
+    .clone()
+    .add(frameNormal.clone().multiplyScalar(DISTANCIA_FOCO_FRAME + 8));
+
+  fallback.y = THREE.MathUtils.clamp(
+    frameCenter.y + ALTURA_EXTRA_FOCO_FRAME,
+    ALTURA_MINIMA_CAMARA,
+    ALTURA_MAXIMA_CAMARA
+  );
+
+  limitarPuntoALaSala(fallback);
+
+  return fallback;
+}
+
+function focusCameraOnFrame(frameObject) {
+  if (!frameObject) {
+    return false;
+  }
+
+  actualizarZonaColisionMemorial();
+
+  const frameCenter = getFrameCenter(frameObject);
+  const frameNormal = getFrameNormal(frameObject, frameCenter);
+  const focusPosition = getSafeFocusPosition(frameCenter, frameNormal);
+
+  camera.position.copy(focusPosition);
+  orientarCamaraHacia(frameCenter);
+  aplicarLimitesCamara();
+
+  return true;
+}
+
+async function focusCameraOnPersonFrame(person) {
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const frameObject = getFrameObjectForPerson(person);
+
+    if (frameObject) {
+      return focusCameraOnFrame(frameObject);
+    }
+
+    await sleep(180);
+  }
+
+  return false;
+}
+
 async function selectPersonFromSearch(person) {
   const input = document.getElementById("detainedSearchInput");
 
@@ -583,13 +723,20 @@ async function selectPersonFromSearch(person) {
   const uploads = await getUploadsForPerson(person);
 
   if (uploads.length > 0) {
-    const plural = uploads.length === 1 ? "memoria subida" : "memorias subidas";
+    const focused = await focusCameraOnPersonFrame(person);
+
+    if (focused) {
+      setSearchStatus(
+        `Te llevé al frame de ${personName}.`,
+        "has-memory"
+      );
+      return;
+    }
 
     setSearchStatus(
-      `Sí hay ${uploads.length} ${plural} para ${personName}. Puedes encontrar sus frames dentro del memorial.`,
-      "has-memory"
+      `Sí hay memorias subidas para ${personName}, pero todavía no encontré su frame visible en la palabra.`,
+      "has-error"
     );
-
     return;
   }
 
@@ -634,7 +781,7 @@ function setupDetenidosSearch() {
     }
 
     setSearchStatus(
-      "Selecciona una opción de la lista para revisar si tiene memorias subidas."
+      "Presiona Enter o selecciona una opción para ir directo a su frame."
     );
   });
 
