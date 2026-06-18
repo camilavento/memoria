@@ -7,8 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Memorial 3D | Proyecto MEMORIA</title>
 
-  <!-- Forzar carga nueva del CSS -->
-  <link rel="stylesheet" href="style.css?v=bottom-nav-final">
+  <link rel="stylesheet" href="style.css?v=bottom-search-1">
 
   <script type="importmap">
     {
@@ -34,8 +33,29 @@
   </main>
 
   <nav class="bottom-nav">
-    <a href="aportar.html">Construir memoria</a>
-    <a href="proyecto.html">Sobre el proyecto</a>
+    <div class="bottom-nav-links">
+      <a href="aportar.html">Construir memoria</a>
+      <a href="proyecto.html">Sobre el proyecto</a>
+    </div>
+
+    <div class="bottom-search" id="bottomSearch">
+      <label for="detainedSearchInput">Buscar persona</label>
+
+      <div class="detained-search-box">
+        <input
+          id="detainedSearchInput"
+          type="search"
+          autocomplete="off"
+          placeholder="Nombre del detenido desaparecido"
+        >
+
+        <div id="detainedSearchResults" class="detained-search-results"></div>
+      </div>
+
+      <p id="detainedSearchStatus" class="detained-search-status">
+        Selecciona una persona para revisar si tiene memorias subidas.
+      </p>
+    </div>
   </nav>
 
   <section id="memoryModal" class="modal">
@@ -51,6 +71,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabaseClient.js"></script>
-  <script type="module" src="memorial.js?v=free-camera-7"></script>
+  <script type="module" src="memorial.js?v=bottom-search-1"></script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 // Lee memorias desde Supabase.
 // Aplica texturas PNG al piso, paredes y techo del fondo del memorial.
 // Movimiento corregido: navegación libre dentro de la sala, sin eje fijo central.
+// Buscador inferior conectado a data/detenidos-desaparecidos.json y a Supabase.
 
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -46,6 +47,8 @@ const OBJETIVO_CAMARA_INICIAL = new THREE.Vector3(0, 2.9, -5.5);
 
 const WALL_TEXTURE_PATH = "textures/paredes.png";
 const FLOOR_TEXTURE_PATH = "textures/piso.png";
+
+const DETENIDOS_DB_PATH = "data/detenidos-desaparecidos.json";
 
 const CUPOS_POR_CARA = {
   front: 34,
@@ -121,6 +124,19 @@ const letterFiles = [
 
 let memories = [];
 
+function mapSupabaseMemoryRow(row) {
+  return {
+    personId: row.person_id,
+    name: row.name,
+    message: row.message,
+    type: row.type,
+    relation: row.relation,
+    files: Array.isArray(row.files) ? row.files : [],
+    createdAt: row.created_at,
+    dedicatedTo: row.dedicated_to || {}
+  };
+}
+
 function isDemoMemory(memory) {
   const demoIds = ["p001", "p002", "p003", "p004"];
 
@@ -153,22 +169,358 @@ async function loadMemoriesFromSupabase() {
 
     memories = Array.isArray(data)
       ? data
-          .map(row => ({
-            personId: row.person_id,
-            name: row.name,
-            message: row.message,
-            type: row.type,
-            relation: row.relation,
-            files: Array.isArray(row.files) ? row.files : [],
-            createdAt: row.created_at,
-            dedicatedTo: row.dedicated_to || {}
-          }))
+          .map(mapSupabaseMemoryRow)
           .filter(memory => !isDemoMemory(memory))
       : [];
   } catch (error) {
     console.error("No se pudieron cargar las memorias desde Supabase:", error);
     memories = [];
   }
+}
+
+/* =========================
+   BASE DE DETENIDOS DESAPARECIDOS
+========================= */
+
+let detenidosDesaparecidos = [];
+
+function normalizarTexto(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getPersonId(person) {
+  return String(
+    person?.id ||
+    person?.person_id ||
+    person?.persona_id ||
+    person?.codigo ||
+    ""
+  ).trim();
+}
+
+function getPersonName(person) {
+  return String(
+    person?.nombre ||
+    person?.name ||
+    person?.nombre_completo ||
+    person?.fullName ||
+    "Persona sin nombre"
+  ).trim();
+}
+
+function getPersonMeta(person) {
+  const parts = [
+    person?.militancia,
+    person?.fecha,
+    person?.region,
+    person?.región,
+    person?.ciudad,
+    person?.comuna
+  ]
+    .filter(Boolean)
+    .map(item => String(item).trim())
+    .filter(Boolean);
+
+  return parts.join(" · ");
+}
+
+function getPersonSearchText(person) {
+  return normalizarTexto([
+    getPersonId(person),
+    getPersonName(person),
+    person?.militancia,
+    person?.fecha,
+    person?.region,
+    person?.región,
+    person?.ciudad,
+    person?.comuna,
+    person?.edad,
+    person?.ocupacion,
+    person?.ocupación
+  ].join(" "));
+}
+
+async function loadDetenidosDatabase() {
+  try {
+    const response = await fetch(`${DETENIDOS_DB_PATH}?v=search-1`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error(`No se pudo cargar ${DETENIDOS_DB_PATH}`);
+    }
+
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      detenidosDesaparecidos = data;
+      return;
+    }
+
+    if (Array.isArray(data.personas)) {
+      detenidosDesaparecidos = data.personas;
+      return;
+    }
+
+    if (Array.isArray(data.items)) {
+      detenidosDesaparecidos = data.items;
+      return;
+    }
+
+    if (Array.isArray(data.data)) {
+      detenidosDesaparecidos = data.data;
+      return;
+    }
+
+    detenidosDesaparecidos = [];
+  } catch (error) {
+    console.error("No se pudo cargar la base de detenidos desaparecidos:", error);
+    detenidosDesaparecidos = [];
+  }
+}
+
+function memoryMatchesPerson(memory, person) {
+  const personId = normalizarTexto(getPersonId(person));
+  const personName = normalizarTexto(getPersonName(person));
+  const dedicatedTo = memory.dedicatedTo || {};
+
+  const possibleMemoryIds = [
+    memory.personId,
+    memory.person_id,
+    dedicatedTo.id,
+    dedicatedTo.personId,
+    dedicatedTo.person_id,
+    dedicatedTo.codigo
+  ]
+    .map(normalizarTexto)
+    .filter(Boolean);
+
+  if (personId && possibleMemoryIds.includes(personId)) {
+    return true;
+  }
+
+  const possibleMemoryNames = [
+    memory.name,
+    memory.nombre,
+    memory.dedicatedToName,
+    dedicatedTo.nombre,
+    dedicatedTo.name,
+    dedicatedTo.nombre_completo,
+    dedicatedTo.fullName
+  ]
+    .map(normalizarTexto)
+    .filter(Boolean);
+
+  if (personName && possibleMemoryNames.includes(personName)) {
+    return true;
+  }
+
+  return false;
+}
+
+async function getUploadsForPerson(person) {
+  const personId = getPersonId(person);
+
+  if (window.supabaseClient && personId) {
+    try {
+      const { data, error } = await window.supabaseClient
+        .from("memories")
+        .select("*")
+        .eq("person_id", personId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      const exactMatches = Array.isArray(data)
+        ? data
+            .map(mapSupabaseMemoryRow)
+            .filter(memory => !isDemoMemory(memory))
+        : [];
+
+      if (exactMatches.length > 0) {
+        return exactMatches;
+      }
+    } catch (error) {
+      console.warn("No se pudo consultar Supabase por person_id. Se usará búsqueda local:", error);
+    }
+  }
+
+  return memories.filter(memory => memoryMatchesPerson(memory, person));
+}
+
+function buscarPersonasDetenidas(query) {
+  const normalizedQuery = normalizarTexto(query);
+
+  if (normalizedQuery.length < 2) {
+    return [];
+  }
+
+  const words = normalizedQuery
+    .split(/\s+/)
+    .map(word => word.trim())
+    .filter(Boolean);
+
+  return detenidosDesaparecidos
+    .filter(person => {
+      const searchText = getPersonSearchText(person);
+      return words.every(word => searchText.includes(word));
+    })
+    .slice(0, 8);
+}
+
+function setSearchStatus(message, className = "") {
+  const status = document.getElementById("detainedSearchStatus");
+
+  if (!status) {
+    return;
+  }
+
+  status.className = `detained-search-status ${className}`.trim();
+  status.textContent = message;
+}
+
+function clearSearchResults() {
+  const results = document.getElementById("detainedSearchResults");
+
+  if (!results) {
+    return;
+  }
+
+  results.innerHTML = "";
+  results.classList.remove("active");
+}
+
+function renderSearchResults(personas) {
+  const results = document.getElementById("detainedSearchResults");
+
+  if (!results) {
+    return;
+  }
+
+  results.innerHTML = "";
+
+  if (!personas.length) {
+    results.classList.remove("active");
+    return;
+  }
+
+  personas.forEach(person => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "detained-result-button";
+
+    const name = document.createElement("span");
+    name.className = "detained-result-name";
+    name.textContent = getPersonName(person);
+
+    const meta = document.createElement("span");
+    meta.className = "detained-result-meta";
+    meta.textContent = getPersonMeta(person) || "Sin información complementaria";
+
+    button.appendChild(name);
+    button.appendChild(meta);
+
+    button.addEventListener("click", () => {
+      selectPersonFromSearch(person);
+    });
+
+    results.appendChild(button);
+  });
+
+  results.classList.add("active");
+}
+
+async function selectPersonFromSearch(person) {
+  const input = document.getElementById("detainedSearchInput");
+
+  if (input) {
+    input.value = getPersonName(person);
+  }
+
+  clearSearchResults();
+
+  const personName = getPersonName(person);
+
+  setSearchStatus(`Buscando memorias subidas para ${personName}...`, "is-loading");
+
+  const uploads = await getUploadsForPerson(person);
+
+  if (uploads.length > 0) {
+    const plural = uploads.length === 1 ? "memoria subida" : "memorias subidas";
+
+    setSearchStatus(
+      `Sí hay ${uploads.length} ${plural} para ${personName}. Puedes encontrar sus frames dentro del memorial.`,
+      "has-memory"
+    );
+
+    return;
+  }
+
+  setSearchStatus(
+    `Aún no hay memorias subidas para ${personName}.`,
+    "no-memory"
+  );
+}
+
+function setupDetenidosSearch() {
+  const searchRoot = document.getElementById("bottomSearch");
+  const input = document.getElementById("detainedSearchInput");
+
+  if (!searchRoot || !input) {
+    return;
+  }
+
+  if (!detenidosDesaparecidos.length) {
+    setSearchStatus(
+      "No se pudo cargar la base de detenidos desaparecidos.",
+      "has-error"
+    );
+  }
+
+  input.addEventListener("input", () => {
+    const query = input.value;
+    const matches = buscarPersonasDetenidas(query);
+
+    renderSearchResults(matches);
+
+    if (normalizarTexto(query).length >= 2 && !matches.length) {
+      setSearchStatus("No encontré coincidencias en la base de datos.", "no-memory");
+    } else if (normalizarTexto(query).length < 2) {
+      setSearchStatus(
+        "Selecciona una persona para revisar si tiene memorias subidas."
+      );
+    }
+  });
+
+  input.addEventListener("keydown", event => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    const matches = buscarPersonasDetenidas(input.value);
+
+    if (matches.length > 0) {
+      event.preventDefault();
+      selectPersonFromSearch(matches[0]);
+    }
+  });
+
+  input.addEventListener("focus", () => {
+    const matches = buscarPersonasDetenidas(input.value);
+    renderSearchResults(matches);
+  });
+
+  document.addEventListener("click", event => {
+    if (!searchRoot.contains(event.target)) {
+      clearSearchResults();
+    }
+  });
 }
 
 /* =========================
@@ -770,6 +1122,19 @@ function updateKeyboardMovement(deltaTime) {
     return;
   }
 
+  const activeElement = document.activeElement;
+
+  if (
+    activeElement &&
+    (
+      activeElement.tagName === "INPUT" ||
+      activeElement.tagName === "TEXTAREA" ||
+      activeElement.tagName === "SELECT"
+    )
+  ) {
+    return;
+  }
+
   const speed = movementKeys.fast ? VELOCIDAD_RAPIDA : VELOCIDAD_CAMINAR;
   const forward = getForwardDirection(true);
   const right = getRightDirection();
@@ -843,6 +1208,19 @@ function setupCameraInteraction() {
 
   window.addEventListener("keydown", event => {
     if (isModalOpen()) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+
+    if (
+      activeElement &&
+      (
+        activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.tagName === "SELECT"
+      )
+    ) {
       return;
     }
 
@@ -1591,10 +1969,6 @@ function addSafeClick(id, callback) {
   }
 }
 
-addSafeClick("fullWordButton", () => {
-  posicionarMemorialDentroDeSalaReferencia({ resetCamera: true });
-});
-
 addSafeClick("zoomIn", () => {
   zoomCamera(1);
 });
@@ -1752,6 +2126,9 @@ if (memoryModal) {
 
 async function startMemorial() {
   await loadMemoriesFromSupabase();
+  await loadDetenidosDatabase();
+
+  setupDetenidosSearch();
   loadBackgroundModel();
   loadLetters();
 }
