@@ -24,15 +24,17 @@ const ALTURA_OBJETIVO_LETRA = 4.2;
 const ANCHO_FRAME = 0.31;
 const ALTO_FRAME = 0.43;
 const PROFUNDIDAD_FRAME = 0.04;
-const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.34;
-const OFFSET_FRAME = 0.028;
+const DISTANCIA_MINIMA_ENTRE_FRAMES = 0.42;
+const OFFSET_FRAME = 0.06;
 const MAX_FRAMES_POR_LETRA = 68;
 
-const COLOR_FONDO_GENERAL = 0x5b5f63;
+const COLOR_FONDO_GENERAL = 0xffffff;
 const COLOR_MURO = 0xffffff;
 const COLOR_MURO_LATERAL = 0xffffff;
 const COLOR_SUELO = 0xffffff;
 const COLOR_TECHO = 0xffffff;
+const USAR_TEXTURAS_SALA = false;
+const MOSTRAR_LINEAS_SALA = false;
 
 const ALTURA_MINIMA_CAMARA = 1.35;
 const ALTURA_MAXIMA_CAMARA = 12.2;
@@ -61,11 +63,11 @@ const MIN_CARACTERES_BUSQUEDA = 1;
 const COLOR_RESALTADO_BUSQUEDA = "#9b6a3a";
 
 const CUPOS_POR_CARA = {
-  front: 34,
-  left: 12,
-  right: 12,
-  top: 8,
-  diagonal: 6,
+  front: 60,
+  left: 0,
+  right: 0,
+  top: 0,
+  diagonal: 0,
   back: 0
 };
 
@@ -325,7 +327,6 @@ function resaltarCoincidencias(textoOriginal, query) {
 
   return html;
 }
-
 function getPersonId(person) {
   return String(
     person?.id ||
@@ -634,7 +635,6 @@ function renderSearchResults(personas, query = "") {
 
   results.classList.add("active");
 }
-
 /* =========================
    ESCENA
 ========================= */
@@ -647,7 +647,7 @@ if (!container) {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLOR_FONDO_GENERAL);
-scene.fog = new THREE.Fog(COLOR_FONDO_GENERAL, 95, 260);
+scene.fog = null;
 
 const camera = new THREE.PerspectiveCamera(
   35,
@@ -771,10 +771,8 @@ function createFlatMaterial({
   side = THREE.FrontSide,
   map = null
 }) {
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     color,
-    roughness,
-    metalness,
     side,
     map
   });
@@ -795,10 +793,21 @@ function createReferenceRoom() {
   const backZ = roomCenterZ - roomDepth / 2;
   const frontZ = roomCenterZ + roomDepth / 2;
 
-  const backWallTexture = loadTiledTexture(WALL_TEXTURE_PATH, 8, 3);
-  const sideWallTexture = loadTiledTexture(WALL_TEXTURE_PATH, 14, 3);
-  const floorTexture = loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 16);
-  const ceilingTexture = loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 8);
+  const backWallTexture = USAR_TEXTURAS_SALA
+    ? loadTiledTexture(WALL_TEXTURE_PATH, 8, 3)
+    : null;
+
+  const sideWallTexture = USAR_TEXTURAS_SALA
+    ? loadTiledTexture(WALL_TEXTURE_PATH, 14, 3)
+    : null;
+
+  const floorTexture = USAR_TEXTURAS_SALA
+    ? loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 16)
+    : null;
+
+  const ceilingTexture = USAR_TEXTURAS_SALA
+    ? loadTiledTexture(FLOOR_TEXTURE_PATH, 8, 8)
+    : null;
 
   const floorMaterial = createFlatMaterial({
     color: COLOR_SUELO,
@@ -835,10 +844,9 @@ function createReferenceRoom() {
   const lineMaterial = new THREE.LineBasicMaterial({
     color: 0x6f6f6f,
     transparent: true,
-    opacity: 0.3
+    opacity: MOSTRAR_LINEAS_SALA ? 0.3 : 0
   });
-
-  const floor = new THREE.Mesh(
+    const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(roomWidth, floorDepth),
     floorMaterial
   );
@@ -1050,7 +1058,6 @@ function obtenerLimitesSala() {
     maxZ: frontZ - MARGEN_SEGURIDAD_SALA
   };
 }
-
 function limitarPuntoALaSala(position) {
   const bounds = obtenerLimitesSala();
 
@@ -1314,7 +1321,6 @@ function keyToMovement(key, isPressed) {
     movementKeys.fast = isPressed;
   }
 }
-
 function setupCameraInteraction() {
   orientarCamaraHacia(OBJETIVO_CAMARA_INICIAL);
 
@@ -1440,6 +1446,120 @@ function loadBackgroundModel() {
 
 const loadedLetters = [];
 
+const FRAME_RENDER_NORMAL = 0;
+const FRAME_RENDER_DESTACADO = 9999;
+let frameSeleccionado = null;
+
+function obtenerFrameRaiz(object) {
+  let current = object;
+  let fallback = null;
+
+  while (current) {
+    if (current.userData && current.userData.isFrame) {
+      if (!fallback) {
+        fallback = current;
+      }
+
+      if (current.isGroup) {
+        return current;
+      }
+    }
+
+    current = current.parent;
+  }
+
+  return fallback;
+}
+
+function guardarEstadoBaseFrame(frame) {
+  if (!frame || !frame.userData) {
+    return;
+  }
+
+  if (!frame.userData.basePosition) {
+    frame.userData.basePosition = frame.position.clone();
+  }
+
+  if (!frame.userData.baseScale) {
+    frame.userData.baseScale = frame.scale.clone();
+  }
+}
+
+function aplicarPrioridadFrame(frame, destacado) {
+  if (!frame) {
+    return;
+  }
+
+  frame.renderOrder = destacado ? FRAME_RENDER_DESTACADO : FRAME_RENDER_NORMAL;
+
+  frame.traverse(child => {
+    if (!child.isMesh) {
+      return;
+    }
+
+    child.renderOrder = destacado ? FRAME_RENDER_DESTACADO : FRAME_RENDER_NORMAL;
+
+    const materials = Array.isArray(child.material)
+      ? child.material
+      : [child.material];
+
+    materials.forEach(material => {
+      if (!material) {
+        return;
+      }
+
+      material.depthTest = !destacado;
+      material.depthWrite = !destacado;
+      material.needsUpdate = true;
+    });
+  });
+}
+
+function resetearFrameSeleccionado() {
+  if (!frameSeleccionado) {
+    return;
+  }
+
+  if (frameSeleccionado.userData.basePosition) {
+    frameSeleccionado.position.copy(frameSeleccionado.userData.basePosition);
+  }
+
+  if (frameSeleccionado.userData.baseScale) {
+    frameSeleccionado.scale.copy(frameSeleccionado.userData.baseScale);
+  }
+
+  aplicarPrioridadFrame(frameSeleccionado, false);
+  frameSeleccionado = null;
+}
+
+function destacarFrameSeleccionado(frameObject) {
+  const frame = obtenerFrameRaiz(frameObject);
+
+  if (!frame) {
+    return null;
+  }
+
+  if (frameSeleccionado && frameSeleccionado !== frame) {
+    resetearFrameSeleccionado();
+  }
+
+  guardarEstadoBaseFrame(frame);
+  frameSeleccionado = frame;
+
+  const normal = frame.userData.normal
+    ? frame.userData.normal.clone().normalize()
+    : new THREE.Vector3(0, 0, 1);
+
+  frame.position
+    .copy(frame.userData.basePosition)
+    .add(normal.multiplyScalar(0.24));
+
+  frame.scale.copy(frame.userData.baseScale).multiplyScalar(1.22);
+
+  aplicarPrioridadFrame(frame, true);
+
+  return frame;
+}
 function getObjectBox(object) {
   object.updateWorldMatrix(true, true);
 
@@ -1771,23 +1891,25 @@ function createSurfaceSlots(letterGroup, structureObject) {
 
   return finalSlots.slice(0, MAX_FRAMES_POR_LETRA);
 }
-
 function addFramesOn3DStructure(letterGroup, structureObject, startIndex) {
   const slots = createSurfaceSlots(letterGroup, structureObject);
 
   const framesGroup = new THREE.Group();
   framesGroup.name = "frames-" + letterGroup.name;
 
+  const visibleSlots = slots.filter(slot => slot.normal.z > 0.72);
   const remainingMemories = Math.max(0, memories.length - startIndex);
-  const totalFrames = Math.min(slots.length, remainingMemories);
+  const totalFrames = Math.min(visibleSlots.length, remainingMemories);
 
   for (let i = 0; i < totalFrames; i++) {
     const memory = memories[startIndex + i];
-    const slot = slots[i];
+    const slot = visibleSlots[i];
     const frame = createFrame(memory);
 
+    const normalFrontal = new THREE.Vector3(0, 0, 1);
+
     const position = slot.position.clone().add(
-      slot.normal.clone().multiplyScalar(OFFSET_FRAME)
+      normalFrontal.clone().multiplyScalar(OFFSET_FRAME)
     );
 
     frame.position.copy(position);
@@ -1796,10 +1918,13 @@ function addFramesOn3DStructure(letterGroup, structureObject, startIndex) {
 
     quaternion.setFromUnitVectors(
       new THREE.Vector3(0, 0, 1),
-      slot.normal.clone().normalize()
+      normalFrontal
     );
 
     frame.quaternion.copy(quaternion);
+    frame.userData.normal = normalFrontal.clone();
+    frame.userData.personId = memory.personId;
+    guardarEstadoBaseFrame(frame);
 
     framesGroup.add(frame);
   }
@@ -1847,12 +1972,13 @@ function addFramesOnFallbackVolume(letterGroup, startIndex) {
     }
   }
 
+  const visibleSlots = slots.filter(slot => slot.normal.z > 0.9);
   const remainingMemories = Math.max(0, memories.length - startIndex);
-  const totalFrames = Math.min(slots.length, remainingMemories);
+  const totalFrames = Math.min(visibleSlots.length, remainingMemories);
 
   for (let i = 0; i < totalFrames; i++) {
     const memory = memories[startIndex + i];
-    const slot = slots[i];
+    const slot = visibleSlots[i];
     const frame = createFrame(memory);
 
     frame.position.copy(slot.position);
@@ -1865,6 +1991,9 @@ function addFramesOnFallbackVolume(letterGroup, startIndex) {
     );
 
     frame.quaternion.copy(quaternion);
+    frame.userData.normal = slot.normal.clone().normalize();
+    frame.userData.personId = memory.personId;
+    guardarEstadoBaseFrame(frame);
 
     framesGroup.add(frame);
   }
@@ -2155,9 +2284,11 @@ async function focusAndOpenMemory(person, memory) {
   }
 
   if (frameObject) {
-    focusCameraOnFrame(frameObject);
+    const frameDestacado = destacarFrameSeleccionado(frameObject) || frameObject;
 
-    const frameMemory = frameObject.userData.memory || memory;
+    focusCameraOnFrame(frameDestacado);
+
+    const frameMemory = frameDestacado.userData.memory || frameObject.userData.memory || memory;
 
     window.setTimeout(() => {
       openModal(frameMemory);
@@ -2313,6 +2444,7 @@ addSafeClick("zoomOut", () => {
 });
 
 addSafeClick("resetView", () => {
+  resetearFrameSeleccionado();
   posicionarMemorialDentroDeSalaReferencia({ resetCamera: true });
 });
 
@@ -2345,7 +2477,8 @@ renderer.domElement.addEventListener("click", event => {
   const hit = intersects[0].object;
 
   if (hit.userData.isFrame) {
-    openModal(hit.userData.memory);
+    const frameDestacado = destacarFrameSeleccionado(hit) || hit;
+    openModal(frameDestacado.userData.memory || hit.userData.memory);
   }
 });
 
