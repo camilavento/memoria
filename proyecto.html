@@ -1,4 +1,4 @@
-<!-- proyecto.html -->
+﻿<!-- proyecto.html -->
 
 <!DOCTYPE html>
 <html lang="es">
@@ -35,15 +35,63 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sobre el proyecto | MEMORIA</title>
-  <link rel="stylesheet" href="style.css?v=texto-proyecto-nuevo-1">
+  <link rel="stylesheet" href="style.css?v=proyecto-ajuste-visual-3">
+
+  <style>
+    .about-card{
+      max-width: 1400px;
+      padding: 56px 64px 64px;
+    }
+
+    .project-title{
+      margin: 8px 0 52px;
+      text-align: center;
+      font-size: clamp(4rem, 8vw, 6.8rem);
+      line-height: 0.9;
+      font-weight: 400;
+      letter-spacing: -0.06em;
+      font-kerning: normal;
+    }
+
+    .about-card p{
+      max-width: 1120px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-bottom: 30px;
+      line-height: 1.58;
+    }
+
+    .about-card p:last-child{
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 900px){
+      .about-card{
+        padding: 34px 24px 42px;
+      }
+
+      .project-title{
+        margin: 10px 0 36px;
+        font-size: clamp(3rem, 14vw, 5rem);
+        letter-spacing: -0.055em;
+      }
+
+      .about-card p{
+        max-width: 100%;
+        margin-bottom: 24px;
+      }
+    }
+  </style>
 </head>
 
 <body class="content-page">
 
-  <a class="back-button" href="index.html">← Volver al inicio</a>
+  <a class="back-button" href="index.html">Volver al inicio</a>
 
   <main class="content-card about-card">
-    <h1 style="text-align:center;">MEMORIA</h1>
+    <p class="eyebrow">Proyecto MEMORIA</p>
+
+    <h1 class="project-title">MEMORIA</h1>
 
     <p>
       Un espacio digital creado para recordar a las personas detenidas desaparecidas durante la dictadura
@@ -70,8 +118,6 @@
     <p>
       Porque recordar también es una forma de hacer presente lo que intentaron borrar.
     </p>
-
-    <a class="main-link" href="memorial.html">Entrar al memorial</a>
   </main>
 
 </body>
